@@ -266,12 +266,17 @@ int CDECL main(int aArgc, char* aArgv[])
     Brhz uri(optionUri.Value());
 
     string uconfigfile = (const char *)optionConfig.Value().Ptr();
-    if (uconfigfile.empty())
+
+    bool cfspecified = true;
+    if (uconfigfile.empty()) {
+        cfspecified = false;
         uconfigfile = "/etc/upmpdcli.conf";
+    }
     ConfSimple config(uconfigfile.c_str(), 1, true);
     if (!config.ok()) {
         cerr << "Could not open config: " << uconfigfile << endl;
-        return 1;
+        if (cfspecified)
+            return 1;
     }
 
     int port = 8888;
