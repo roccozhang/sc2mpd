@@ -41,13 +41,16 @@ sc2mpd_LDADD = $(OTHEROBJECTS) $(TOPOH)ohNet/$(OBJIPATH)libohNetCore.a \
      $(TOPOH)ohNet/$(OBJIPATH)libTestFramework.a $(OTHERLIBS)
 
 sc2mpd_SOURCES = \
+     ohbuild.sh \
      src/conftree.cpp \
      src/conftree.h \
      src/httpgate.cpp \
      src/log.cpp \
      src/log.h \
-     src/rcvqueue.h \
+     src/ptmutex.h \
      src/rcvqueue.h \
      src/sc2mpd.cpp \
      src/wav.cpp \
-     src/wav.h
+     src/wav.h \
+     src/workqueue.h
+     
