@@ -144,7 +144,7 @@ official_way()
     make release=1
 }
 
-#clone_oh
+clone_oh
 
 build_ohNet
 build_ohNetGenerated
