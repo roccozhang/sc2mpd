@@ -193,7 +193,20 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
     }
 
     char *buf = (char *)malloc(bytes);
-    swab(aMsg.Audio().Ptr(), buf, bytes);
+    if (aMsg.BitDepth() == 16) {
+        swab(aMsg.Audio().Ptr(), buf, bytes);
+    } else if (aMsg.BitDepth() == 24) {
+        unsigned char *ocp = (unsigned char *)buf;
+        const unsigned char *icp = (const unsigned char *)aMsg.Audio().Ptr();
+        const unsigned char *icp0 = icp;
+        while (icp - icp0 <= bytes - 3) {
+            *ocp++ = icp[2];
+            *ocp++ = icp[1];
+            *ocp++ = *icp;
+            icp += 3;
+        }
+    } else if (aMsg.BitDepth() == 32) {
+    }
 
     AudioMessage *ap = new 
         AudioMessage(aMsg.BitDepth(), aMsg.Channels(), aMsg.Samples(),
