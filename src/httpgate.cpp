@@ -103,6 +103,9 @@ data_generator(void *cls, uint64_t pos, char *buf, size_t max)
     }
 
     PTMutexLocker lock(dataqueueLock);
+    // We only do the offset-fixing thing once per called because it's
+    // based on the (unchanging) input parameters.
+    bool offsetfixed = false;
     size_t bytes = 0;
     while (bytes < max) {
         while (dataqueue.empty()) {
@@ -117,6 +120,25 @@ data_generator(void *cls, uint64_t pos, char *buf, size_t max)
         }
 
         AudioMessage *m = dataqueue.front();
+
+        // After initial ops to read the header, our client usually
+        // restarts reading the stream. We can't rewind, so we
+        // simulate rewind by discarding any partial buffer, to be
+        // sure that we start aligned with the sample (we could also
+        // use the sample size and channel count to adjust the offset,
+        // but this is simpler). This is a bit of a hack, because it
+        // won't work if the client does not behave as we expect
+        // (seeks to a position not exactly after the header). The
+        // proper solution would be to compare the buffer position and
+        // read offsets modulos against chansXsamplesize and adjust
+        // the offset (back or forward dep on avail data) so they are
+        // the same.
+        if (rc->baseoffset + pos == 44 && 
+            m->m_curoffs != 0 && !offsetfixed) {
+            //LOGDEB1("data_generator: FIXING OFFSET" << endl);
+            m->m_curoffs = m->m_bytes;
+            offsetfixed = true;
+        }
         if (dataformat_wav && rc->baseoffset == 0 && pos == 0 && bytes == 0) {
             LOGINF("data_generator: first buf" << endl);
             // Using buf+bytes in case we ever insert icy before the audio
@@ -205,12 +227,16 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
             size = ranges[0].second - ranges[0].first + 1;
         }
         rc->baseoffset = ranges[0].first;
-        //LOGDEB("httpgate: answer: got ranges: baseoffs " << rc->baseoffset <<
-        //" sz " << size << endl);
+        //LOGDEB("httpgate: answer: got " << ranges.size() << 
+        //     " ranges: range[0]: offs " << rc->baseoffset <<
+        //     " sz " << size << endl);
     }
 
+    // the block size is flatly ignored by libcurl. 5280 is 440x3
+    // (thats the songcast msg size in 24 bits mode. Any random value
+    // would probably work the same
     struct MHD_Response *response = 
-        MHD_create_response_from_callback(size, 1764, &data_generator, 
+        MHD_create_response_from_callback(size, 5292, &data_generator, 
                                           rc, ContentReaderFreeCallback);
     if (response == NULL) {
         LOGERR("httpgate: answer: could not create response" << endl);
