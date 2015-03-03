@@ -52,6 +52,7 @@ build_ohNet()
     dir=ohNet
     echo building $dir
     cd  $dir
+	# Oct 28 2014
     git checkout b2207ce19d638b55f660896d5b42c49900e8e2cd
     make ohNetCore proxies devices TestFramework bundle || exit 1
 
@@ -63,6 +64,7 @@ build_ohNetGenerated()
     dir=ohNetGenerated
     echo building $dir
     cd  $dir
+	# Oct 28 2014
     git checkout b436c4f098cd3417c2b1e97f9a94b5875e71f200
     # e.g. Linux-x64, Linux-armhf
     arch=`basename $topdir/ohNet/Build/Bundles/ohNet-*-*.tar.gz | \
@@ -104,8 +106,9 @@ build_ohTopology()
     dir=ohTopology
     echo building $dir
     cd  $dir
+	# Apr 14 2014 Still latest on Feb 9 2015
     git checkout 11767b53dda79564548b522a72db895f24e27437
-
+	
     ./go fetch --all --clean 
 
     ./waf configure --ohnet=../ohNet --dest-platform=Linux-x86
@@ -121,6 +124,7 @@ build_ohSongcast()
     dir=ohSongcast
     echo building $dir
     cd  $dir
+	# Sep 2 2014. Still latest on Feb 9 2015
     git checkout 315fe6a191f512b2faf2502eb07613c4a3335bd3
 
     # This fails because the link options are wrong (-lpthread should be
