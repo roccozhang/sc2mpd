@@ -1,0 +1,15 @@
+Source: sc2mpd
+Section: contrib/sound
+Priority: extra
+Maintainer: Jean-Francois Dockes <jf@dockes.org>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libmicrohttpd-dev
+Standards-Version: 3.9.3
+Homepage: http://www.lesbonscomptes.com/upmpdcli
+
+Package: sc2mpd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Gateway forwarding a Linn Songcast audio stream to MPD
+ sc2mpd is designed to work with upmpdcli, with with it provides a Songcast
+ Receiver interface (hopefully) usable from any Songcast Sender such as the
+ Windows or Mac OS X Linn Songcast applications.
