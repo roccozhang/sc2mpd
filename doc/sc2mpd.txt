@@ -1,7 +1,8 @@
 = upmpdcli Linn Songcast integration
 
-The *upmdcli* UPnP front-end to MPD implements support for Linn Songcast with
-help from the *sc2mpd* auxiliary process.
+The *sc2mpd* auxiliary process implements part of Linn *Songcast* support
+for the *upmdcli* UPnP MPD front-end. Specifically, it implements a
+*Songcast* _Receiver_ service, managed by *upmpdcli*.
 
 *_This has mostly been tested with 16 bits sound but a recent change seems
 to have fixed 24 bits sound, so this should be now usable for MACs.  This
