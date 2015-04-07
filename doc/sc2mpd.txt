@@ -17,6 +17,21 @@ As Debian and Ubuntu tend to lag quite bit on MPD progresses, I have setup
 link:downloads.html#mpd[backport repositories] for recent mpd versions
 (currently 0.19.9), for Ubuntu, Debian i386/amd64 and Raspbian.
 
+*NEW: Debian packages for sc2mpd:* as the procedure for building sc2mpd is
+not completely obvious and automatic, I have also added *sc2mpd* packages
+to the *upmpdcli* Debian repository. Packages exist for architectures i386,
+amd64 and Raspberry Pi. You can follow the procedure on the
+link:downloads.html[upmpdcli download page] to add the repository, then
+just use the following to install sc2mpd:
+    
+    sudo apt-get install sc2mpd
+
+NOTE: For rebuilding from the source package: the installed binary has a
+static link to the OpenHome libraries. This means that, in order to rebuild
+from the source package, you need to follow the normal procedure to build
+the OpenHome libs first (see the ohbuild.sh script further down). The build
+tree should be located under /opt/openhome for the package rebuild to work.
+
 == What is Songcast
 
 Songcast is a protocol for transporting audio streams across the
@@ -34,6 +49,7 @@ desktop capture and forward the audio stream to a remote Songcast device.
 
 Any application on the desktop will (be compelled to) transparently play to
 the remote device, without need to know anything about Songcast.
+
 
 == Implementation of Songcast support in upmpdcli
 

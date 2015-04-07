@@ -755,6 +755,28 @@ configured with <tt>--disable-audiofile</tt>.</p></div>
 <div class="paragraph"><p>As Debian and Ubuntu tend to lag quite bit on MPD progresses, I have setup
 <a href="downloads.html#mpd">backport repositories</a> for recent mpd versions
 (currently 0.19.9), for Ubuntu, Debian i386/amd64 and Raspbian.</p></div>
+<div class="paragraph"><p><strong>NEW: Debian packages for sc2mpd:</strong> as the procedure for building sc2mpd is
+not completely obvious and automatic, I have also added <strong>sc2mpd</strong> packages
+to the <strong>upmpdcli</strong> Debian repository. Packages exist for architectures i386,
+amd64 and Raspberry Pi. You can follow the procedure on the
+<a href="downloads.html">upmpdcli download page</a> to add the repository, then
+just use the following to install sc2mpd:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><tt>sudo apt-get install sc2mpd</tt></pre>
+</div></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<div class="title">Note</div>
+</td>
+<td class="content">For rebuilding from the source package: the installed binary has a
+static link to the OpenHome libraries. This means that, in order to rebuild
+from the source package, you need to follow the normal procedure to build
+the OpenHome libs first (see the ohbuild.sh script further down). The build
+tree should be located under /opt/openhome for the package rebuild to work.</td>
+</tr></table>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -925,7 +947,7 @@ suspect.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-04-07 11:26:24 CEST
+Last updated 2015-04-07 16:20:40 CEST
 </div>
 </div>
 </body>
