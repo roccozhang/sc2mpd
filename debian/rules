@@ -8,6 +8,28 @@
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
+export DEB_BUILD_HARDENING=1
 
-%:
-	dh $@  --with autotools-dev
+build: build-stamp
+
+build-stamp:
+	dh build --before configure
+	dh_auto_configure -- --with-openhome=/opt/openhome
+	dh build --after configure
+	touch build-stamp
+
+clean:
+	dh clean
+
+install: build install-stamp
+install-stamp:
+	dh install
+	touch install-stamp
+
+binary-arch: install
+	dh binary-arch
+
+binary-indep: install
+	dh binary-indep
+
+binary: binary-arch binary-indep

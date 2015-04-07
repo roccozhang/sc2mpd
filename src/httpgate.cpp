@@ -83,12 +83,14 @@ static const char *ValueKindToCp(enum MHD_ValueKind kind)
     }
 }
 
+#ifdef PRINT_KEYS
 static int print_out_key (void *cls, enum MHD_ValueKind kind, 
                           const char *key, const char *value)
 {
     LOGDEB(ValueKindToCp(kind) << ": " << key << " -> " << value << endl);
     return MHD_YES;
 }
+#endif /* PRINT_KEYS */
 
 // This gets called by microhttpd when it needs data.
 static ssize_t
@@ -204,7 +206,9 @@ static int answer_to_connection(void *cls, struct MHD_Connection *connection,
     LOGDEB("answer_to_connection: url " << url << " method " << method << 
            " version " << version << endl);
 
-    //MHD_get_connection_values(connection, MHD_HEADER_KIND, &print_out_key, 0);
+#ifdef PRINT_KEYS
+    MHD_get_connection_values(connection, MHD_HEADER_KIND, &print_out_key, 0);
+#endif
 
     static int aptr;
     if (&aptr != *con_cls) {

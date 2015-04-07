@@ -199,7 +199,7 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
         unsigned char *ocp = (unsigned char *)buf;
         const unsigned char *icp = (const unsigned char *)aMsg.Audio().Ptr();
         const unsigned char *icp0 = icp;
-        while (icp - icp0 <= bytes - 3) {
+        while (icp - icp0 <= int(bytes) - 3) {
             *ocp++ = icp[2];
             *ocp++ = icp[1];
             *ocp++ = *icp;

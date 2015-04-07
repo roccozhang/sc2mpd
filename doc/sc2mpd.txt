@@ -1,4 +1,4 @@
-= upmpdcli Linn Songcast integration
+= sc2mpd: helper for upmpdcli Songcast support
 
 The *sc2mpd* auxiliary process implements part of Linn *Songcast* support
 for the *upmdcli* UPnP MPD front-end. Specifically, it implements a
