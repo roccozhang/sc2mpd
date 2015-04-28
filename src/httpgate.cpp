@@ -292,9 +292,6 @@ static int accept_policy(void *, const struct sockaddr* sa,
 void *audioEater(void *cls)
 {
     AudioEaterContext *ctxt = (AudioEaterContext*)cls;
-    if (ctxt->port == 0) {
-        ctxt->port = 8888;
-    }
     LOGDEB("Using port " << ctxt->port << " for HTTP" << endl);
     struct MHD_Daemon *daemon = 
         MHD_start_daemon(

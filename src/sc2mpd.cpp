@@ -292,7 +292,7 @@ int CDECL main(int aArgc, char* aArgv[])
             return 1;
     }
 
-    int port = 8888;
+    int port = 8768;
     string value;
     if (config.get("schttpport", value)) {
         port = atoi(value.c_str());
