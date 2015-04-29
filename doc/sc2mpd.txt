@@ -32,24 +32,32 @@ from the source package, you need to follow the normal procedure to build
 the OpenHome libs first (see the ohbuild.sh script further down). The build
 tree should be located under /opt/openhome for the package rebuild to work.
 
-== What is Songcast
+== What is Linn Songcast
 
-Songcast is a protocol for transporting audio streams across the
-network. This is independant from the UPnP framework which mostly deals
-with URLs and audio files (usually, but not necessarily, compressed).
+*Songcast* is a protocol for transporting audio streams across the network,
+developped by link:http://oss.linn.co.uk/trac/wiki/Songcast[Linn] as a
+series of open-source libraries and applications.
 
-The streams transported by Songcast are actual real-time audio data, which
+There are two types of entities involved in the protocol:
+
+ - A *Songcast* _Sender_ generates an audio stream.
+ - A *Songcast* _Receiver_, which typically runs on an OpenHome Renderer,
+   receives the stream and plays it.
+
+The streams transported by *Songcast* are actual real-time audio data, which
 can go straight to an audio card for playing.
 
-Controlling the streams on the renderer (connecting, starting, stopping) is
-done through an UPnP service named OpenHome _Receiver_.
+Controlling the streams (connecting, starting, stopping) is
+done through an UPnP service named OpenHome __Receiver__, which runs on an
+UPnP Media Renderer implementing the OpenHome services.
 
-The typical use of Songcast is to have an audio driver on a Windows or OS X
-desktop capture and forward the audio stream to a remote Songcast device.
+The typical use of *Songcast* is to have an audio driver on a Windows or OS X
+desktop capture and forward the audio stream to a remote *Songcast* device
+(this is the main purpose of the *Songcast* Mac and Windows applications,
+apart from actually controlling the audio destination).
 
 Any application on the desktop will (be compelled to) transparently play to
-the remote device, without need to know anything about Songcast.
-
+the remote device, without need to know anything about *Songcast*.
 
 == Implementation of Songcast support in upmpdcli
 
