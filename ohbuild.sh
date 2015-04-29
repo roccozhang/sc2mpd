@@ -52,8 +52,8 @@ build_ohNet()
     dir=ohNet
     echo building $dir
     cd  $dir
-	# Oct 28 2014
-    git checkout b2207ce19d638b55f660896d5b42c49900e8e2cd
+    # Apr 29 2015
+    git checkout 5118af2acce9a25123336b9d3526cc87cdb96386
     make ohNetCore proxies devices TestFramework bundle || exit 1
 
     cd ..
@@ -64,8 +64,8 @@ build_ohNetGenerated()
     dir=ohNetGenerated
     echo building $dir
     cd  $dir
-	# Oct 28 2014
-    git checkout b436c4f098cd3417c2b1e97f9a94b5875e71f200
+    # Apr 29 2015
+    git checkout 8deb7ffd2f8e99fdc56449dadcd7d4fbc96cb829
     # e.g. Linux-x64, Linux-armhf
     arch=`basename $topdir/ohNet/Build/Bundles/ohNet-*-*.tar.gz | \
         sed -e s/ohNet-//  -e s/-[A-Z][a-z][a-z]*\.tar\.gz$//`
@@ -95,10 +95,11 @@ build_ohdevtools()
     dir=ohdevtools
     echo building $dir
     cd  $dir
-    git checkout 33d8e940a7737df1b2a500efc28ef1429df8f304
+    git checkout 52445477e4201b35b4ee5174bf90d25543cd1849
     # Nothing to build
     cd ..
 }
+
 
 build_ohTopology()
 {
@@ -106,8 +107,8 @@ build_ohTopology()
     dir=ohTopology
     echo building $dir
     cd  $dir
-	# Apr 14 2014 Still latest on Feb 9 2015
-    git checkout 11767b53dda79564548b522a72db895f24e27437
+    # Apr 29 2015
+    git checkout 18f004621a7b0dc3add6ddfeec781bd3878ae42e
 	
     ./go fetch --all --clean 
 
@@ -124,11 +125,13 @@ build_ohSongcast()
     dir=ohSongcast
     echo building $dir
     cd  $dir
-	# Sep 2 2014. Still latest on Feb 9 2015
-    git checkout 315fe6a191f512b2faf2502eb07613c4a3335bd3
 
-    # This fails because the link options are wrong (-lpthread should be
-    # at the end of the link line), but it builds the objs we need.
+    # Apr 29 2015.
+    git checkout d3f6017a1ef133525f75f4d78e399e6fd6b70ce6
+
+    # This (used to?) fails because the link options are wrong
+    # (-lpthread should be at the end of the link line), but it builds
+    # the objs we need.
     make release=1 Receiver
 }
 
