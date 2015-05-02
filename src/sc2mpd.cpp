@@ -20,6 +20,8 @@ Unless otherwise stated, all code in this project is licensed under the 2-clause
  *	 along with this program; if not, write to the
  *	 Free Software Foundation, Inc.,
  *	 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *
+ * Modified from ohSongcast/Receiver/Receiver.cpp
  */
 #include "config.h"
 
@@ -37,10 +39,16 @@ Unless otherwise stated, all code in this project is licensed under the 2-clause
 #include "rcvqueue.h"
 #include "log.h"
 #include "conftree.h"
+#include "chrono.h"
 
 #include <vector>
 #include <stdio.h>
 #include <iostream>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 using namespace std;
 
 WorkQueue<AudioMessage*> audioqueue("audioqueue", 2);
@@ -50,8 +58,6 @@ WorkQueue<AudioMessage*> audioqueue("audioqueue", 2);
 #pragma warning(disable:4355) // use of 'this' in ctor lists safe in this case
 
 #define CDECL __cdecl
-
-#include <conio.h>
 
 int mygetch()
 {
@@ -107,16 +113,35 @@ private:
     virtual void Process(OhmMsgMetatext& aMsg);
 
 private:
-    TBool iReset;
-    TUint iCount;
-    TUint iFrame;
-};
+    // Debug, stats, etc while we get to understand the Songcast streams
+    class Observer {
+    public:
+        TBool iReset;
+        TUint iCount;
+        TUint iFrame;
+        int dumpfd;
+        Chrono chron;
+        Observer() : iReset(true), iCount(0), iFrame(0), dumpfd(-1) {
+#if 0
+            dumpfd = 
+                open("/y/av/tmp/sc2dump", O_WRONLY|O_CREAT|O_TRUNC, 0666);
+            if (dumpfd < 0) {
+                LOGERR("OhmReceiverDriver::Open dump file failed\n");
+            }
+#endif
+        }
 
+        void reset() {
+            iReset = true;
+        }
+
+        void process(OhmMsgAudio& aMsg);
+    };
+    Observer obs;
+};
 
 OhmReceiverDriver::OhmReceiverDriver(int port)
 {
-    iReset = true;
-    iCount = 0;
     AudioEaterContext *ctxt = new AudioEaterContext(port);
     audioqueue.start(1, &audioEater, ctxt);
 }
@@ -138,7 +163,7 @@ void OhmReceiverDriver::Started()
 
 void OhmReceiverDriver::Connected()
 {
-    iReset = true;
+    obs.reset();
     LOGDEB("=== CONNECTED ====\n");
 }
 
@@ -159,13 +184,59 @@ void OhmReceiverDriver::Stopped()
     LOGDEB("=== STOPPED ====\n");
 }
 
-void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
+void OhmReceiverDriver::Observer::process(OhmMsgAudio& aMsg)
 {
     if (++iCount == 400 || aMsg.Halt()) {
+        static unsigned long long last_timestamp;
+        unsigned long long timestamp = aMsg.MediaTimestamp();
         LOGDEB("OhmRcvDrv::Process:audio: samplerate " << aMsg.SampleRate() <<
                " bitdepth " << aMsg.BitDepth() << " channels " <<
                aMsg.Channels() << " samples " << aMsg.Samples() << 
                " Halted ? " << aMsg.Halt() << endl);
+
+        if (last_timestamp) {
+            long long intervalus = 
+                ((timestamp - last_timestamp) * 1000000) / (256*48000);
+            long long atsus = 
+                ((timestamp) * 1000000) / (256*48000);
+            long long absus = chron.amicros() - 1430477861905884LL;
+            LOGDEB("Computed-uS: " << intervalus  << 
+                   " Elapsed-uS: " << chron.urestart() << 
+                   " Timestamp-uS: " << atsus <<
+                   " Abs-uS: " << absus << 
+                   " Diff-mS " << (absus - atsus) / 1000 <<
+                   endl);
+        }
+        last_timestamp = timestamp;
+
+        if (!aMsg.Halt()) {
+            unsigned int bytes = 
+                aMsg.Samples() * (aMsg.BitDepth() / 8) * aMsg.Channels();
+
+            if (bytes != aMsg.Audio().Bytes()) {
+                LOGERR("OhmRcvDrv::Process:audio: computed bytes " << bytes << 
+                       " !=  bufer's " << aMsg.Audio().Bytes() << endl);
+                bytes = aMsg.Audio().Bytes();
+            }
+            const unsigned char *icp = 
+                (const unsigned char *)aMsg.Audio().Ptr();
+            bool silence = true;
+            for (unsigned int i = 0; i < bytes; i++) {
+                if (icp[i]) {
+                    silence = false;
+                    break;
+                }
+            }
+            if (silence) {
+                LOGDEB("OhmRcvDrv::Process:audio: silence buffer" << endl);
+            }
+            if (dumpfd >= 0) {
+                if (write(dumpfd, icp, bytes) != int(bytes)) {
+                    ;
+                }
+            }
+        }
+
         iCount = 0;
     }
 
@@ -179,20 +250,27 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
         }
         iFrame = aMsg.Frame();
     }
+}
 
-    if (aMsg.Audio().Bytes() == 0)
+void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
+{
+
+    if (aMsg.Audio().Bytes() == 0) {
+        LOGDEB("OhmReceiverDriver::Process: empty message\n");
         return;
-
-    unsigned int bytes = 
-        aMsg.Samples() * (aMsg.BitDepth() / 8) * aMsg.Channels();
-
-    if (bytes != aMsg.Audio().Bytes()) {
-        LOGERR("OhmRcvDrv::Process:audio: computed bytes " << bytes << 
-               " !=  bufer's " << aMsg.Audio().Bytes() << endl);
-        bytes = aMsg.Audio().Bytes();
     }
 
+    unsigned int bytes = aMsg.Audio().Bytes();
     char *buf = (char *)malloc(bytes);
+    if (buf == 0) {
+        LOGERR("OhmReceiverDriver::Process: can't allocate " << 
+               bytes << " bytes\n");
+        return;
+    }
+
+#ifdef WORDS_BIGENDIAN
+    memcpy(buf, aMsg.Audio().Ptr(), bytes);
+#else
     if (aMsg.BitDepth() == 16) {
         swab(aMsg.Audio().Ptr(), buf, bytes);
     } else if (aMsg.BitDepth() == 24) {
@@ -206,7 +284,19 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
             icp += 3;
         }
     } else if (aMsg.BitDepth() == 32) {
+        // Never seen this but whatever...
+        unsigned char *ocp = (unsigned char *)buf;
+        const unsigned char *icp = (const unsigned char *)aMsg.Audio().Ptr();
+        const unsigned char *icp0 = icp;
+        while (icp - icp0 <= int(bytes) - 4) {
+            *ocp++ = icp[3];
+            *ocp++ = icp[2];
+            *ocp++ = icp[1];
+            *ocp++ = *icp;
+            icp += 4;
+        }
     }
+#endif
 
     AudioMessage *ap = new 
         AudioMessage(aMsg.BitDepth(), aMsg.Channels(), aMsg.Samples(),

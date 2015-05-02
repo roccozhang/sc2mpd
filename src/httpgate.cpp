@@ -308,8 +308,7 @@ void *audioEater(void *cls)
         return (void *)0;
     }
     delete ctxt;
-
-    for (int seq=0;;seq++) {
+    while (true) {
         AudioMessage *tsk = 0;
         size_t qsz;
         if (!audioqueue.take(&tsk, &qsz)) {
@@ -317,16 +316,11 @@ void *audioEater(void *cls)
             audioqueue.workerExit();
             return (void*)1;
         }
-#if 0        
-        if (seq % 200 == 0) {
-            LOGDEB("audioEater: msg: " << tsk->m_bytes << " bytes " << endl);
-        }
-#endif
         PTMutexLocker lock(dataqueueLock);
         /* limit size of queuing. If there is a client but it is not
            eating blocks fast enough, there will be audio pops */
         while (dataqueue.size() > 2) {
-            //LOGINF("audioEater: discarding buffer !" << endl);
+            LOGDEB("audioEater: discarding buffer !" << endl);
             delete dataqueue.front();
             dataqueue.pop();
         }

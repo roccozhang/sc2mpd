@@ -42,6 +42,8 @@ sc2mpd_LDADD = $(OTHEROBJECTS) $(TOPOH)ohNet/$(OBJIPATH)libohNetCore.a \
 
 sc2mpd_SOURCES = \
      ohbuild.sh \
+     src/chrono.cpp \
+     src/chrono.h \
      src/conftree.cpp \
      src/conftree.h \
      src/httpgate.cpp \

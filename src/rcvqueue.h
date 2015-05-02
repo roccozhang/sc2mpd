@@ -19,10 +19,10 @@
 
 #include "workqueue.h"
 
-/** The audio messages which get passed between the songcast receiver
- * and the http server part. We could probably use
- * ohSongcast own audio messages, but I prefer to stop the custom type
- * nonsense asap.
+/* 
+ * The audio messages which get passed between the songcast receiver
+ * and the http server part. We could probably use ohSongcast own audio 
+ * messages, but I prefer to stop the custom type usage asap.
  */
 class AudioMessage {
 public:

@@ -7,6 +7,7 @@ AC_CONFIG_HEADERS([src/config.h])
 AM_INIT_AUTOMAKE([1.10 no-define subdir-objects foreign])
 
 AC_PROG_CXX
+AC_C_BIGENDIAN
 
 AC_ARG_WITH(openhome, 
     AC_HELP_STRING([--with-openhome=topOpenhomeDir],
