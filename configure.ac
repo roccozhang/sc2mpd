@@ -29,6 +29,14 @@ AC_CHECK_LIB([microhttpd], [MHD_start_daemon], , [lmh=no])
 if test X$lmh = Xno; then
    AC_MSG_ERROR([libmicrohttpd development files not found])
 fi
+AC_CHECK_LIB([samplerate], [src_process], , [lsrc=no])
+if test X$lsrc = Xno; then
+   AC_MSG_ERROR([libsamplerate development files not found])
+fi
+AC_CHECK_LIB([asound], [snd_pcm_open], , [lsnd=no])
+if test X$lsnd = Xno; then
+   AC_MSG_ERROR([libasound development files not found])
+fi
 
 OTHERLIBS=$LIBS
 echo OTHERLIBS $OTHERLIBS

@@ -289,10 +289,14 @@ static int accept_policy(void *, const struct sockaddr* sa,
     return MHD_YES;
 }
 
-void *audioEater(void *cls)
+
+static void *audioEater(void *cls)
 {
-    AudioEaterContext *ctxt = (AudioEaterContext*)cls;
-    LOGDEB("Using port " << ctxt->port << " for HTTP" << endl);
+    AudioEater::Context *ctxt = (AudioEater::Context*)cls;
+
+    LOGDEB("audioEater: queue " << ctxt->queue << " HTTP port " << ctxt->port 
+           << endl);
+
     struct MHD_Daemon *daemon = 
         MHD_start_daemon(
             MHD_USE_THREAD_PER_CONNECTION,
@@ -304,27 +308,34 @@ void *audioEater(void *cls)
             &answer_to_connection, NULL, 
             MHD_OPTION_END);
     if (NULL == daemon) {
-        audioqueue.workerExit();
+        ctxt->queue->workerExit();
         return (void *)0;
     }
+
+    WorkQueue<AudioMessage*> *queue = ctxt->queue;
     delete ctxt;
     while (true) {
         AudioMessage *tsk = 0;
         size_t qsz;
-        if (!audioqueue.take(&tsk, &qsz)) {
+        if (!queue->take(&tsk, &qsz)) {
             MHD_stop_daemon (daemon);
-            audioqueue.workerExit();
+            queue->workerExit();
             return (void*)1;
         }
         PTMutexLocker lock(dataqueueLock);
+
         /* limit size of queuing. If there is a client but it is not
-           eating blocks fast enough, there will be audio pops */
+           eating blocks fast enough, there will be skips */
         while (dataqueue.size() > 2) {
             LOGDEB("audioEater: discarding buffer !" << endl);
             delete dataqueue.front();
             dataqueue.pop();
         }
+
         dataqueue.push(tsk);
         pthread_cond_broadcast(&dataqueueWaitCond);
+        pthread_yield();
     }
 }
+
+AudioEater httpAudioEater(AudioEater::BO_LSB, &audioEater);

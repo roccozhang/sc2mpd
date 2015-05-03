@@ -49,15 +49,33 @@ public:
     unsigned int m_curoffs; /* Used by the http data emitter */
 };
 
-extern WorkQueue<AudioMessage*> audioqueue;
+// Def for the downstream module which can be using either http to mpd
+// or direct alsa. No effort is done for easy expansion to other
+// modules, e.g. this would need to add stuff to the Context thing
+// etc. but this seems sufficient for expected needs.
+// Note that the module does not derive from this class, it initializes an
+// object with appropriate values.
+class AudioEater {
+public:
+    enum BOrder {BO_MSB, BO_LSB, BO_HOST};
+    struct Context {
+        Context(WorkQueue<AudioMessage*> *q, int p = 0) : port(p), queue(q) {}
+        int port;
+        WorkQueue<AudioMessage*> *queue;
+    };
 
-/** Worker routine for fetching bufs from the rcvqueue and making them
- *  available to HTTP. the param is actually an AudioEaterContext */
-extern void *audioEater(void *);
+    // Constructor called by downstream module to set its params
+    AudioEater(BOrder o, void *(*w)(void *))
+        : input_border(o), worker(w) {
+    }
 
-struct AudioEaterContext {
-    AudioEaterContext(int p = 0) : port(p) {}
-    int port;
+    BOrder input_border;
+    /** Worker routine for fetching bufs from the rcvqueue and sending them
+     * further. The param is actually an AudioEater::Context */
+    void *(*worker)(void *);
 };
+
+extern AudioEater httpAudioEater;
+extern AudioEater alsaAudioEater;
 
 #endif /* _RCVQUEUE_H_INCLUDED_ */

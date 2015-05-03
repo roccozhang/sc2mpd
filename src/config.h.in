@@ -6,11 +6,17 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `asound' library (-lasound). */
+#undef HAVE_LIBASOUND
+
 /* Define to 1 if you have the `microhttpd' library (-lmicrohttpd). */
 #undef HAVE_LIBMICROHTTPD
 
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 #undef HAVE_LIBPTHREAD
+
+/* Define to 1 if you have the `samplerate' library (-lsamplerate). */
+#undef HAVE_LIBSAMPLERATE
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H

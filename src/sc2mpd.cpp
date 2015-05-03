@@ -51,7 +51,7 @@ Unless otherwise stated, all code in this project is licensed under the 2-clause
 
 using namespace std;
 
-WorkQueue<AudioMessage*> audioqueue("audioqueue", 2);
+WorkQueue<AudioMessage*> audioqueue("audioqueue", 4);
 
 #ifdef _WIN32
 
@@ -95,7 +95,7 @@ using namespace OpenHome::Av;
 
 class OhmReceiverDriver : public IOhmReceiverDriver, public IOhmMsgProcessor {
 public:
-    OhmReceiverDriver(int port);
+    OhmReceiverDriver(AudioEater* eater, int port);
 
 private:
     // IOhmReceiverDriver
@@ -137,13 +137,15 @@ private:
 
         void process(OhmMsgAudio& aMsg);
     };
-    Observer obs;
+    Observer m_obs;
+    AudioEater *m_eater;
 };
 
-OhmReceiverDriver::OhmReceiverDriver(int port)
+OhmReceiverDriver::OhmReceiverDriver(AudioEater *eater, int port)
+    : m_eater(eater)
 {
-    AudioEaterContext *ctxt = new AudioEaterContext(port);
-    audioqueue.start(1, &audioEater, ctxt);
+    AudioEater::Context *ctxt = new AudioEater::Context(&audioqueue, port);
+    audioqueue.start(1, m_eater->worker, ctxt);
 }
 
 void OhmReceiverDriver::Add(OhmMsg& aMsg)
@@ -163,7 +165,7 @@ void OhmReceiverDriver::Started()
 
 void OhmReceiverDriver::Connected()
 {
-    obs.reset();
+    m_obs.reset();
     LOGDEB("=== CONNECTED ====\n");
 }
 
@@ -184,6 +186,7 @@ void OhmReceiverDriver::Stopped()
     LOGDEB("=== STOPPED ====\n");
 }
 
+// Debug and stats only, not needed for main function
 void OhmReceiverDriver::Observer::process(OhmMsgAudio& aMsg)
 {
     if (++iCount == 400 || aMsg.Halt()) {
@@ -254,11 +257,12 @@ void OhmReceiverDriver::Observer::process(OhmMsgAudio& aMsg)
 
 void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
 {
-
     if (aMsg.Audio().Bytes() == 0) {
         LOGDEB("OhmReceiverDriver::Process: empty message\n");
         return;
     }
+
+    m_obs.process(aMsg);
 
     unsigned int bytes = aMsg.Audio().Bytes();
     char *buf = (char *)malloc(bytes);
@@ -268,35 +272,48 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
         return;
     }
 
+    // Songcast data is always msb-first.  Convert to desired order:
+    // depends on what downstream wants, and just as well we do it
+    // here because we copy the buf anyway.
+    bool needswap = false;
+    switch (m_eater->input_border) {
+    case AudioEater::BO_MSB: break;
+    case AudioEater::BO_LSB: needswap = true; break;
+    case AudioEater::BO_HOST:
 #ifdef WORDS_BIGENDIAN
-    memcpy(buf, aMsg.Audio().Ptr(), bytes);
+        needswap = false;
 #else
-    if (aMsg.BitDepth() == 16) {
-        swab(aMsg.Audio().Ptr(), buf, bytes);
-    } else if (aMsg.BitDepth() == 24) {
-        unsigned char *ocp = (unsigned char *)buf;
-        const unsigned char *icp = (const unsigned char *)aMsg.Audio().Ptr();
-        const unsigned char *icp0 = icp;
-        while (icp - icp0 <= int(bytes) - 3) {
-            *ocp++ = icp[2];
-            *ocp++ = icp[1];
-            *ocp++ = *icp;
-            icp += 3;
-        }
-    } else if (aMsg.BitDepth() == 32) {
-        // Never seen this but whatever...
-        unsigned char *ocp = (unsigned char *)buf;
-        const unsigned char *icp = (const unsigned char *)aMsg.Audio().Ptr();
-        const unsigned char *icp0 = icp;
-        while (icp - icp0 <= int(bytes) - 4) {
-            *ocp++ = icp[3];
-            *ocp++ = icp[2];
-            *ocp++ = icp[1];
-            *ocp++ = *icp;
-            icp += 4;
-        }
-    }
+        needswap = true;
 #endif
+    }
+
+    if (needswap) {
+        unsigned char *ocp = (unsigned char *)buf;
+        const unsigned char *icp = 
+            (const unsigned char *)aMsg.Audio().Ptr();
+        const unsigned char *icp0 = icp;
+        if (aMsg.BitDepth() == 16) {
+            swab(aMsg.Audio().Ptr(), buf, bytes);
+        } else if (aMsg.BitDepth() == 24) {
+            while (icp - icp0 <= int(bytes) - 3) {
+                *ocp++ = icp[2];
+                *ocp++ = icp[1];
+                *ocp++ = *icp;
+                icp += 3;
+            }
+        } else if (aMsg.BitDepth() == 32) {
+            // Never seen this but whatever...
+            while (icp - icp0 <= int(bytes) - 4) {
+                *ocp++ = icp[3];
+                *ocp++ = icp[2];
+                *ocp++ = icp[1];
+                *ocp++ = *icp;
+                icp += 4;
+            }
+        }
+    } else {
+        memcpy(buf, aMsg.Audio().Ptr(), bytes);
+    }
 
     AudioMessage *ap = new 
         AudioMessage(aMsg.BitDepth(), aMsg.Channels(), aMsg.Samples(),
@@ -304,7 +321,7 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
 
     // There is nothing special we can do if put fails: no way to
     // return status. Should we just exit ?
-    if (!audioqueue.put(ap, true)) {
+    if (!audioqueue.put(ap, false)) {
     }
 }
 
@@ -350,6 +367,11 @@ int CDECL main(int aArgc, char* aArgv[])
     OptionString optionConfig("-c", "--config", Brn("/etc/upmpdcli.conf"), 
                               "[config] upmpdcli configuration file path");
     parser.AddOption(&optionConfig);
+
+    OptionBool optionDevice("-d", "--direct-alsa", 
+                            "[stream] Use alsa directly instead of producing "
+                            "http stream");
+    parser.AddOption(&optionDevice);
 
     if (!parser.Parse(aArgc, aArgv)) {
         return (1);
@@ -400,7 +422,8 @@ int CDECL main(int aArgc, char* aArgv[])
            ((subnet >> 8) & 0xff) << "." << ((subnet >> 16) & 0xff) << "." <<
            ((subnet >> 24) & 0xff) << endl);
 
-    OhmReceiverDriver* driver = new OhmReceiverDriver(port);
+    OhmReceiverDriver* driver = new OhmReceiverDriver(
+        optionDevice.Value() ? &alsaAudioEater : &httpAudioEater, port);
 
     OhmReceiver* receiver = new OhmReceiver(lib->Env(), adapter, ttl, *driver);
 
