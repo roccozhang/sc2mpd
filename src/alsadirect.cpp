@@ -34,24 +34,29 @@ using namespace std;
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #endif
 
+static const snd_pcm_uframes_t periodsize = 32768; /* Periodsize (bytes) */
+
 // The queue for audio blocks ready for alsa
 static const unsigned int qs = 200;
 static const unsigned int qt = qs/2;
 // the 40 value should be computed from the alsa buffer size. It's
 // there becausee we have a jump on the first alsa write (alsa buffer
 // is empty).
-static const unsigned int qit = qs/2 + 40;
+static const unsigned int qit = qs/2 + periodsize/1024;
 
 static WorkQueue<AudioMessage*> alsaqueue("alsaqueue", qs);
 static snd_pcm_t *pcm;
+static bool qinit = false;
 
 static void *alsawriter(void *p)
 {
-    if (!alsaqueue.waitminsz(qit)) {
-        LOGERR("alsawriter: waitminsz failed\n");
-        return (void *)1;
-    }
     while (true) {
+        if (!qinit) {
+            if (!alsaqueue.waitminsz(qit)) {
+                LOGERR("alsawriter: waitminsz failed\n");
+                return (void *)1;
+            }
+        }
         AudioMessage *tsk = 0;
         size_t qsz;
         if (!alsaqueue.take(&tsk, &qsz)) {
@@ -59,7 +64,6 @@ static void *alsawriter(void *p)
             alsaqueue.workerExit();
             return (void*)1;
         }
-
         // Bufs 
         snd_pcm_uframes_t frames = 
             tsk->m_bytes / (tsk->m_chans * (tsk->m_bits/8));
@@ -67,22 +71,24 @@ static void *alsawriter(void *p)
         if (ret != int(frames)) {
             LOGERR("snd-cm_writei(" << frames <<" frames) failed: ret: " <<
                    ret << endl);
-            if (ret < 0)
+            if (ret < 0) {
+                qinit = false;
                 snd_pcm_prepare(pcm);
-//            return (void *)1;
+            }
+        } else {
+            qinit = true;
         }
     }
 }
 
-static bool alsa_init(AudioMessage *tsk)
+static bool alsa_init(const string& dev, AudioMessage *tsk)
 {
     snd_pcm_hw_params_t *hw_params;
     int err;
-//    static const string dev("plughw:CARD=PCH,DEV=0");
-    static const string dev("hw:2,0");
     const char *cmd = "";
     unsigned int actual_rate = tsk->m_freq;
     int dir=0;
+    int periods = 2;       /* Number of periods */
 
     if ((err = snd_pcm_open(&pcm, dev.c_str(), 
                             SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
@@ -127,7 +133,20 @@ static bool alsa_init(AudioMessage *tsk)
                                               tsk->m_chans)) < 0) {
         goto error;
     }
-
+    /* Set number of periods. Periods used to be called fragments. */ 
+    cmd = "snd_pcm_hw_params_set_periods";
+    if (snd_pcm_hw_params_set_periods(pcm, hw_params, periods, 0) < 0) {
+        goto error;
+    }
+  
+    /* Set buffer size (in frames). The resulting latency is given by */
+    /* latency = periodsize * periods / (rate * bytes_per_frame)     */
+    cmd = "snd_pcm_hw_params_set_buffer_size";
+    if (snd_pcm_hw_params_set_buffer_size(pcm, hw_params, 
+                                          (periodsize * periods)>>2) < 0) {
+        goto error;
+    }
+  
     cmd = "snd_pcm_hw_params";
     if ((err = snd_pcm_hw_params(pcm, hw_params)) < 0) {
         goto error;
@@ -149,9 +168,11 @@ static void *audioEater(void *cls)
     LOGDEB("alsaEater: queue " << ctxt->queue << endl);
 
     WorkQueue<AudioMessage*> *queue = ctxt->queue;
+    string alsadevice = ctxt->alsadevice;
+
     delete ctxt;
 
-    bool qinit = false;
+    qinit = false;
     int src_error = 0;
     SRC_STATE *src_state = 0;
     SRC_DATA src_data;
@@ -169,7 +190,7 @@ static void *audioEater(void *cls)
         }
 
         if (src_state == 0) {
-            if (!alsa_init(tsk)) {
+            if (!alsa_init(alsadevice, tsk)) {
                 queue->workerExit();
                 return (void *)1;
             }
@@ -179,7 +200,8 @@ static void *audioEater(void *cls)
             // MEDIUM_QUALITY is around 10%
             // FASTEST is 4-5%. Given that this is process-wide, probably
             // a couple % in fact.
-            // To be re-evaluated on the pi...
+            // To be re-evaluated on the pi... FASTEST is 30% CPU on a Pi 2
+            // with USB audio. Curiously it's 25-30% on a Pi1 with i2s audio.
             src_state = src_new(SRC_SINC_FASTEST, tsk->m_chans, &src_error);
         }
 
@@ -192,10 +214,12 @@ static void *audioEater(void *cls)
                 if (samplerate_ratio > 1.1)
                     samplerate_ratio = 1.1;
             } else {
-                samplerate_ratio -= adj;
+                samplerate_ratio = 1.0 - adj;
                 if (samplerate_ratio < 0.9) 
                     samplerate_ratio = 0.9;
             }
+        } else {
+            samplerate_ratio = 1.0;
         }
 
         unsigned int tot_samples = tsk->m_bytes / (tsk->m_bits/8);
@@ -275,8 +299,6 @@ static void *audioEater(void *cls)
             LOGERR("alsaEater: queue put failed\n");
             return (void *)1;
         }
-        if (alsaqueue.qsize() >= qit)
-            qinit = true;
     }
 }
 

@@ -95,7 +95,7 @@ using namespace OpenHome::Av;
 
 class OhmReceiverDriver : public IOhmReceiverDriver, public IOhmMsgProcessor {
 public:
-    OhmReceiverDriver(AudioEater* eater, int port);
+    OhmReceiverDriver(AudioEater* eater, int port, const string&);
 
 private:
     // IOhmReceiverDriver
@@ -141,10 +141,12 @@ private:
     AudioEater *m_eater;
 };
 
-OhmReceiverDriver::OhmReceiverDriver(AudioEater *eater, int port)
+OhmReceiverDriver::OhmReceiverDriver(AudioEater *eater, int port,
+    const string& ad)
     : m_eater(eater)
 {
     AudioEater::Context *ctxt = new AudioEater::Context(&audioqueue, port);
+    ctxt->alsadevice = ad;
     audioqueue.start(1, m_eater->worker, ctxt);
 }
 
@@ -409,6 +411,8 @@ int CDECL main(int aArgc, char* aArgv[])
     if (config.get("schttpport", value)) {
         port = atoi(value.c_str());
     }
+    string alsadevice("default");
+    config.get("scalsadevice", alsadevice);    
     config.get("sclogfilename", logfilename);
     if (config.get("scloglevel", value))
         loglevel = atoi(value.c_str());
@@ -423,7 +427,8 @@ int CDECL main(int aArgc, char* aArgv[])
            ((subnet >> 24) & 0xff) << endl);
 
     OhmReceiverDriver* driver = new OhmReceiverDriver(
-        optionDevice.Value() ? &alsaAudioEater : &httpAudioEater, port);
+        optionDevice.Value() ? &alsaAudioEater : &httpAudioEater, port, 
+        alsadevice);
 
     OhmReceiver* receiver = new OhmReceiver(lib->Env(), adapter, ttl, *driver);
 

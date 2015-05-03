@@ -62,6 +62,7 @@ public:
         Context(WorkQueue<AudioMessage*> *q, int p = 0) : port(p), queue(q) {}
         int port;
         WorkQueue<AudioMessage*> *queue;
+        std::string alsadevice;
     };
 
     // Constructor called by downstream module to set its params
