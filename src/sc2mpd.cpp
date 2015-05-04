@@ -166,14 +166,14 @@ void OhmReceiverDriver::Started()
 void OhmReceiverDriver::Connected()
 {
     m_obs.reset();
+    printf("CONNECTED\n");
+    fflush(stdout);
     LOGDEB("=== CONNECTED ====\n");
 }
 
 void OhmReceiverDriver::Playing()
 {
     LOGDEB("=== PLAYING ====\n");
-    printf("PLAYING\n");
-    fflush(stdout);
 }
 
 void OhmReceiverDriver::Disconnected()
