@@ -34,18 +34,21 @@ using namespace std;
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #endif
 
-static snd_pcm_uframes_t periodsize = 16384; /* Periodsize (bytes) */
-static unsigned int periods = 2;       /* Number of periods */
-
 // The queue for audio blocks ready for alsa
 static const unsigned int qs = 100;
-// Queue size target including alsa buffers. This gets recomputed as
-// soon as we have the actual bit/chans params
-static unsigned int qstarg = qs/2;
+// Queue size target including alsa buffers. 
+static const unsigned int qstarg = qs/2;
 
 static WorkQueue<AudioMessage*> alsaqueue("alsaqueue", qs);
-static snd_pcm_t *pcm;
+
+/* This is used to disable sample rate conversion until playing is actually 
+   started */
 static bool qinit = false;
+
+static snd_pcm_t *pcm;
+/* These may be changed depending on local alsa caps */
+static snd_pcm_uframes_t periodsize = 16384; /* Periodsize (bytes) */
+static unsigned int periods = 2;       /* Number of periods */
 
 static void *alsawriter(void *p)
 {
@@ -230,21 +233,24 @@ static void *audioEater(void *cls)
             }
             // BEST_QUALITY yields approx 25% cpu on a core i7
             // 4770T. Obviously too much, actually might not be
-            // sustainable.
+            // sustainable (it's quite 100% of 1 cpu)
             // MEDIUM_QUALITY is around 10%
             // FASTEST is 4-5%. Given that this is process-wide, probably
             // a couple % in fact.
-            // To be re-evaluated on the pi... FASTEST is 30% CPU on a Pi 2
+            // To be re-evaluated on the pi... FASTEST is 30% CPU on a Pi2
             // with USB audio. Curiously it's 25-30% on a Pi1 with i2s audio.
             src_state = src_new(SRC_SINC_FASTEST, tsk->m_chans, &src_error);
 
-            // This is constant for a given stream (depends on fe, buffers 
-            // are 10mS)
+            // Number of frames per buffer. This is constant for a
+            // given stream (depends on fe, Songcast buffers are 10mS)
             bufframes = tsk->m_bytes / (tsk->m_chans * (tsk->m_bits/8));
-            // period size is in bytes
-            LOGDEB("audioEater: alsadirect: qstarg " << qstarg << endl);
         }
 
+        // Computing the samplerate conversion factor. We want to keep
+        // the queue at its target size to control the delay. The
+        // present hack sort of works but has a tendancy to keep
+        // oscillating (with a very small amplitude). It should be
+        // replaced by a proper filter
         float qs = alsaqueue.qsize();
         if (qinit) {
             qs = alsaqueue.qsize() + alsadelay() / bufframes;

@@ -325,6 +325,8 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
     // There is nothing special we can do if put fails: no way to
     // return status. Should we just exit ?
     if (!audioqueue.put(ap, false)) {
+        LOGERR("sc2mpd: queue dead: exiting\n");
+        exit(1);
     }
 }
 
