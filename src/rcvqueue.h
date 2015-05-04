@@ -59,9 +59,9 @@ class AudioEater {
 public:
     enum BOrder {BO_MSB, BO_LSB, BO_HOST};
     struct Context {
-        Context(WorkQueue<AudioMessage*> *q, int p = 0) : port(p), queue(q) {}
-        int port;
+        Context(WorkQueue<AudioMessage*> *q) : queue(q) {}
         WorkQueue<AudioMessage*> *queue;
+        int port;
         std::string alsadevice;
     };
 

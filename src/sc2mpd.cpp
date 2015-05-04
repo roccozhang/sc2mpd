@@ -95,7 +95,7 @@ using namespace OpenHome::Av;
 
 class OhmReceiverDriver : public IOhmReceiverDriver, public IOhmMsgProcessor {
 public:
-    OhmReceiverDriver(AudioEater* eater, int port, const string&);
+    OhmReceiverDriver(AudioEater* eater, AudioEater::Context *ctxt);
 
 private:
     // IOhmReceiverDriver
@@ -141,12 +141,10 @@ private:
     AudioEater *m_eater;
 };
 
-OhmReceiverDriver::OhmReceiverDriver(AudioEater *eater, int port,
-    const string& ad)
+OhmReceiverDriver::OhmReceiverDriver(AudioEater *eater, 
+                                     AudioEater::Context *ctxt)
     : m_eater(eater)
 {
-    AudioEater::Context *ctxt = new AudioEater::Context(&audioqueue, port);
-    ctxt->alsadevice = ad;
     audioqueue.start(1, m_eater->worker, ctxt);
 }
 
@@ -265,6 +263,9 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
     }
 
     m_obs.process(aMsg);
+    if (aMsg.Halt()) {
+        return;
+    }
 
     unsigned int bytes = aMsg.Audio().Bytes();
     char *buf = (char *)malloc(bytes);
@@ -411,8 +412,10 @@ int CDECL main(int aArgc, char* aArgv[])
     if (config.get("schttpport", value)) {
         port = atoi(value.c_str());
     }
+
     string alsadevice("default");
     config.get("scalsadevice", alsadevice);    
+
     config.get("sclogfilename", logfilename);
     if (config.get("scloglevel", value))
         loglevel = atoi(value.c_str());
@@ -426,9 +429,13 @@ int CDECL main(int aArgc, char* aArgv[])
            ((subnet >> 8) & 0xff) << "." << ((subnet >> 16) & 0xff) << "." <<
            ((subnet >> 24) & 0xff) << endl);
 
-    OhmReceiverDriver* driver = new OhmReceiverDriver(
-        optionDevice.Value() ? &alsaAudioEater : &httpAudioEater, port, 
-        alsadevice);
+    AudioEater::Context *ctxt = new AudioEater::Context(&audioqueue);
+    ctxt->port = port;
+    ctxt->alsadevice = alsadevice;
+
+    OhmReceiverDriver* driver = 
+        new OhmReceiverDriver(optionDevice.Value() ? 
+                              &alsaAudioEater : &httpAudioEater, ctxt);
 
     OhmReceiver* receiver = new OhmReceiver(lib->Env(), adapter, ttl, *driver);
 

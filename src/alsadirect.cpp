@@ -34,15 +34,14 @@ using namespace std;
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #endif
 
-static const snd_pcm_uframes_t periodsize = 32768; /* Periodsize (bytes) */
+static snd_pcm_uframes_t periodsize = 16384; /* Periodsize (bytes) */
+static unsigned int periods = 2;       /* Number of periods */
 
 // The queue for audio blocks ready for alsa
-static const unsigned int qs = 200;
-static const unsigned int qt = qs/2;
-// the 40 value should be computed from the alsa buffer size. It's
-// there becausee we have a jump on the first alsa write (alsa buffer
-// is empty).
-static const unsigned int qit = qs/2 + periodsize/1024;
+static const unsigned int qs = 100;
+// Queue size target including alsa buffers. This gets recomputed as
+// soon as we have the actual bit/chans params
+static unsigned int qstarg = qs/2;
 
 static WorkQueue<AudioMessage*> alsaqueue("alsaqueue", qs);
 static snd_pcm_t *pcm;
@@ -52,8 +51,9 @@ static void *alsawriter(void *p)
 {
     while (true) {
         if (!qinit) {
-            if (!alsaqueue.waitminsz(qit)) {
+            if (!alsaqueue.waitminsz(qstarg)) {
                 LOGERR("alsawriter: waitminsz failed\n");
+                alsaqueue.workerExit();
                 return (void *)1;
             }
         }
@@ -83,12 +83,11 @@ static void *alsawriter(void *p)
 
 static bool alsa_init(const string& dev, AudioMessage *tsk)
 {
-    snd_pcm_hw_params_t *hw_params;
+    snd_pcm_hw_params_t *hwparams;
     int err;
     const char *cmd = "";
-    unsigned int actual_rate = tsk->m_freq;
     int dir=0;
-    int periods = 2;       /* Number of periods */
+    unsigned int actual_rate = tsk->m_freq;
 
     if ((err = snd_pcm_open(&pcm, dev.c_str(), 
                             SND_PCM_STREAM_PLAYBACK, 0)) < 0) {
@@ -96,8 +95,7 @@ static bool alsa_init(const string& dev, AudioMessage *tsk)
                snd_strerror(err) << endl);
         return false;;
     }
-		   
-    if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
+    if ((err = snd_pcm_hw_params_malloc(&hwparams)) < 0) {
         LOGERR("alsa_init: snd_pcm_hw_params_malloc " << 
                snd_strerror(err) << endl);
         snd_pcm_close(pcm);
@@ -105,92 +103,128 @@ static bool alsa_init(const string& dev, AudioMessage *tsk)
     }
 
     cmd = "snd_pcm_hw_params_any";
-    if ((err = snd_pcm_hw_params_any(pcm, hw_params)) < 0) {
+    if ((err = snd_pcm_hw_params_any(pcm, hwparams)) < 0) {
         goto error;
     }
-	
     cmd = "snd_pcm_hw_params_set_access";
     if ((err = 
-         snd_pcm_hw_params_set_access(pcm, hw_params, 
+         snd_pcm_hw_params_set_access(pcm, hwparams, 
                                       SND_PCM_ACCESS_RW_INTERLEAVED)) < 0) {
         goto error;
     }
 
     cmd = "snd_pcm_hw_params_set_format";
     if ((err = 
-         snd_pcm_hw_params_set_format(pcm, hw_params, 
+         snd_pcm_hw_params_set_format(pcm, hwparams, 
                                       SND_PCM_FORMAT_S16_LE)) < 0) {
         goto error;
     }
+    cmd = "snd_pcm_hw_params_set_channels";
+    if ((err = snd_pcm_hw_params_set_channels(pcm, hwparams, 
+                                              tsk->m_chans)) < 0) {
+        goto error;
+    }
     cmd = "snd_pcm_hw_params_set_rate_near";
-    if ((err = snd_pcm_hw_params_set_rate_near(pcm, hw_params, 
+    if ((err = snd_pcm_hw_params_set_rate_near(pcm, hwparams, 
                                                &actual_rate, &dir)) < 0) {
         goto error;
     }
 
-    cmd = "snd_pcm_hw_params_set_channels";
-    if ((err = snd_pcm_hw_params_set_channels(pcm, hw_params, 
-                                              tsk->m_chans)) < 0) {
-        goto error;
-    }
-    /* Set number of periods. Periods used to be called fragments. */ 
+    unsigned int periodsmin, periodsmax;
+    snd_pcm_hw_params_get_periods_min(hwparams, &periodsmin, &dir);
+    snd_pcm_hw_params_get_periods_max(hwparams, &periodsmax, &dir);
+    LOGDEB("Alsa: periods min " << periodsmin << 
+           " max " << periodsmax << endl);
+    periods = 2;
+    if (periods < periodsmin || periods > periodsmax)
+        periods = periodsmin;
     cmd = "snd_pcm_hw_params_set_periods";
-    if (snd_pcm_hw_params_set_periods(pcm, hw_params, periods, 0) < 0) {
+    if ((err = snd_pcm_hw_params_set_periods(pcm, hwparams, periods, 0)) < 0) {
         goto error;
     }
-  
-    /* Set buffer size (in frames). The resulting latency is given by */
-    /* latency = periodsize * periods / (rate * bytes_per_frame)     */
+    snd_pcm_uframes_t bsmax, bsmin;
+    snd_pcm_hw_params_get_buffer_size_min(hwparams, &bsmin);
+    snd_pcm_hw_params_get_buffer_size_max(hwparams, &bsmax);
+    unsigned int bufferframes;
+    bufferframes = periodsize * periods / (2*tsk->m_chans);
+    if (bufferframes < bsmin || bufferframes > bsmax) {
+        bufferframes = bsmin;
+        periodsize = bufferframes / periods * (2 * tsk->m_chans);
+    }
     cmd = "snd_pcm_hw_params_set_buffer_size";
-    if (snd_pcm_hw_params_set_buffer_size(pcm, hw_params, 
-                                          (periodsize * periods)>>2) < 0) {
+    LOGDEB("Alsa: set buffer_size: min " << bsmin << " max " << bsmax << 
+           " val " << bufferframes << endl);
+    if ((err = snd_pcm_hw_params_set_buffer_size(pcm, hwparams, bufferframes)) 
+        < 0) {
         goto error;
     }
   
     cmd = "snd_pcm_hw_params";
-    if ((err = snd_pcm_hw_params(pcm, hw_params)) < 0) {
+    if ((err = snd_pcm_hw_params(pcm, hwparams)) < 0) {
         goto error;
     }
 	
-    snd_pcm_hw_params_free(hw_params);
+    snd_pcm_hw_params_free(hwparams);
     return true;
 
 error:
-    snd_pcm_hw_params_free(hw_params);
-    LOGERR("alsa_init: " << cmd << " " << snd_strerror(err) << endl);
-    return false;;
+    LOGERR("alsa_init: " << cmd << " error:" << snd_strerror(err) << endl);
+    snd_pcm_hw_params_free(hwparams);
+    return false;
+}
+
+// Current in-driver delay in samples
+static int alsadelay()
+{
+    snd_pcm_sframes_t delay;
+    if (snd_pcm_delay(pcm, &delay) >= 0) {
+        return delay;
+    } else {
+        return 0;
+    }
 }
 
 static void *audioEater(void *cls)
 {
+    LOGDEB("audioEater: alsadirect\n");
     AudioEater::Context *ctxt = (AudioEater::Context*)cls;
-
-    LOGDEB("alsaEater: queue " << ctxt->queue << endl);
 
     WorkQueue<AudioMessage*> *queue = ctxt->queue;
     string alsadevice = ctxt->alsadevice;
 
     delete ctxt;
+    ctxt = 0;
 
     qinit = false;
+
+    float samplerate_ratio = 1.0;
+
     int src_error = 0;
     SRC_STATE *src_state = 0;
     SRC_DATA src_data;
     memset(&src_data, 0, sizeof(src_data));
+
     alsaqueue.start(1, alsawriter, 0);
-    float samplerate_ratio = 1.0;
 
     while (true) {
         AudioMessage *tsk = 0;
         size_t qsz;
         if (!queue->take(&tsk, &qsz)) {
-            // TBD: reset alsa?
+            LOGDEB("audioEater: alsadirect: queue take failed\n");
+            alsaqueue.setTerminateAndWait();
             queue->workerExit();
             return (void*)1;
         }
 
+        if (tsk->m_bytes == 0 || tsk->m_chans == 0 || tsk->m_bits == 0) {
+            LOGDEB("Zero buf\n");
+            continue;
+        }
+
+        int bufframes = 441;
         if (src_state == 0) {
             if (!alsa_init(alsadevice, tsk)) {
+                alsaqueue.setTerminateAndWait();
                 queue->workerExit();
                 return (void *)1;
             }
@@ -203,13 +237,20 @@ static void *audioEater(void *cls)
             // To be re-evaluated on the pi... FASTEST is 30% CPU on a Pi 2
             // with USB audio. Curiously it's 25-30% on a Pi1 with i2s audio.
             src_state = src_new(SRC_SINC_FASTEST, tsk->m_chans, &src_error);
+
+            // This is constant for a given stream (depends on fe, buffers 
+            // are 10mS)
+            bufframes = tsk->m_bytes / (tsk->m_chans * (tsk->m_bits/8));
+            // period size is in bytes
+            LOGDEB("audioEater: alsadirect: qstarg " << qstarg << endl);
         }
 
+        float qs = alsaqueue.qsize();
         if (qinit) {
-            float qs = alsaqueue.qsize();
-            float t = ((qt - qs) / qt);
-            float adj = t * t  / 10;
-            if (alsaqueue.qsize() < qt) {
+            qs = alsaqueue.qsize() + alsadelay() / bufframes;
+            float t = ((qstarg - qs) / qstarg);
+            float adj = t * t;
+            if (qs < qstarg) {
                 samplerate_ratio =  1.0 + adj;
                 if (samplerate_ratio > 1.1)
                     samplerate_ratio = 1.1;
@@ -256,7 +297,9 @@ static void *audioEater(void *cls)
             static int cnt;
             if (cnt++ == 100) {
                 LOGDEB("samplerate: " 
-                       " qsize " << alsaqueue.qsize() << 
+                       " qstarg " << qstarg <<
+                       " iqsz " << alsaqueue.qsize() <<
+                       " qsize " << int(qs) << 
                        " ratio " << samplerate_ratio <<
                        " in " << src_data.input_frames << 
                        " consumed " << src_data.input_frames_used << 
@@ -297,6 +340,7 @@ static void *audioEater(void *cls)
 
         if (!alsaqueue.put(tsk)) {
             LOGERR("alsaEater: queue put failed\n");
+            queue->workerExit();
             return (void *)1;
         }
     }

@@ -292,6 +292,7 @@ static int accept_policy(void *, const struct sockaddr* sa,
 
 static void *audioEater(void *cls)
 {
+    LOGDEB("audioEater: http\n");
     AudioEater::Context *ctxt = (AudioEater::Context*)cls;
 
     LOGDEB("audioEater: queue " << ctxt->queue << " HTTP port " << ctxt->port 
@@ -314,6 +315,8 @@ static void *audioEater(void *cls)
 
     WorkQueue<AudioMessage*> *queue = ctxt->queue;
     delete ctxt;
+    ctxt = 0;
+
     while (true) {
         AudioMessage *tsk = 0;
         size_t qsz;
