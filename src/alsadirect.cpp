@@ -18,6 +18,7 @@
 
 #include <string.h>
 #include <sys/types.h>
+#include <math.h>
 
 #include <iostream>
 #include <queue>
@@ -81,6 +82,7 @@ static void *alsawriter(void *p)
         } else {
             qinit = true;
         }
+        delete tsk;
     }
 }
 
@@ -197,22 +199,12 @@ public:
         }
     }
     float operator()(float ns) {
-#if 0
-        if (old == 0.0) {
-            old = ns;
-        } else {
-            old = (old + ns) / 2;
-        }
-        return old;
-#endif
-#if 1
         buf[idx++] = ns;
         sum += ns;
         if (idx == FNS)
             idx = 0;
         sum -= buf[idx];
         return sum/FNS;
-#endif
     }
     float old;
     float buf[FNS];
@@ -242,6 +234,9 @@ static void *audioEater(void *cls)
     memset(&src_data, 0, sizeof(src_data));
 
     alsaqueue.start(1, alsawriter, 0);
+
+    // Integral term. We do not use it at the moment
+    // double it = 0;
 
     while (true) {
         AudioMessage *tsk = 0;
@@ -282,27 +277,49 @@ static void *audioEater(void *cls)
 
         // Computing the samplerate conversion factor. We want to keep
         // the queue at its target size to control the delay. The
-        // present hack sort of works but has a tendancy to keep
-        // oscillating (with a very small amplitude). It should be
-        // replaced by a proper filter
-        float qs;
+        // present hack sort of works but could probably benefit from
+        // a more scientific approach
+
+        // Qsize in songcast buffers. This is the variable to control
+        double qs;
+
         if (qinit) {
             qs = alsaqueue.qsize() + alsadelay() / bufframes;
-            float t = ((qstarg - qs) / qstarg);
-            float adj = t * t;
-            if (qs < qstarg) {
-                samplerate_ratio =  1.0 + adj;
-                if (samplerate_ratio > 1.1)
-                    samplerate_ratio = 1.1;
-            } else {
-                samplerate_ratio = 1.0 - adj;
-                if (samplerate_ratio < 0.9) 
-                    samplerate_ratio = 0.9;
-            }
+            // Error term
+            double et =  ((qstarg - qs) / qstarg);
+
+            // Integral. Not used, made it worse each time I tried
+            // it += et;
+
+            // Error correction coef
+            double ce = 0.1;
+
+            // Integral coef
+            //double ci = 0.0001;
+
+            // Compute command
+            double adj = ce * et /* + ci * it*/;
+
+            // Also tried a quadratic correction, worse.
+            // double adj = et * ((et < 0) ? -et : et);
+
+            // Computed ratio
+            samplerate_ratio =  1.0 + adj;
+
+            // Limit extension
+            if (samplerate_ratio < 0.9) 
+                samplerate_ratio = 0.9;
+            if (samplerate_ratio > 1.1)
+                samplerate_ratio = 1.1;
+
         } else {
+            // Starting up, wait for more info
             qs = alsaqueue.qsize();
             samplerate_ratio = 1.0;
+            // it = 0;
         }
+
+        // Average the rate value to eliminate fast oscillations
         samplerate_ratio = filter(samplerate_ratio);
 
         unsigned int tot_samples = tsk->m_bytes / (tsk->m_bits/8);
