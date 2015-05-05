@@ -255,6 +255,32 @@ void OhmReceiverDriver::Observer::process(OhmMsgAudio& aMsg)
     }
 }
 
+void copyswap(unsigned char *dest, const unsigned char *src, 
+              unsigned int bytes, unsigned int bits)
+{
+    unsigned char *ocp = dest;
+    const unsigned char *icp = src;
+    if (bits == 16) {
+        swab(src, dest, bytes);
+    } else if (bits == 24) {
+        while (icp - src <= int(bytes) - 3) {
+            *ocp++ = icp[2];
+            *ocp++ = icp[1];
+            *ocp++ = *icp;
+            icp += 3;
+        }
+    } else if (bits == 32) {
+        // Never seen this but whatever...
+        while (icp - src <= int(bytes) - 4) {
+            *ocp++ = icp[3];
+            *ocp++ = icp[2];
+            *ocp++ = icp[1];
+            *ocp++ = *icp;
+            icp += 4;
+        }
+    }
+}
+
 void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
 {
     if (aMsg.Audio().Bytes() == 0) {
@@ -280,40 +306,22 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
     // here because we copy the buf anyway.
     bool needswap = false;
     switch (m_eater->input_border) {
-    case AudioEater::BO_MSB: break;
-    case AudioEater::BO_LSB: needswap = true; break;
+    case AudioEater::BO_MSB: 
+        break;
+    case AudioEater::BO_LSB: 
+        needswap = true; 
+        break;
     case AudioEater::BO_HOST:
 #ifdef WORDS_BIGENDIAN
         needswap = false;
 #else
         needswap = true;
 #endif
+        break;
     }
 
     if (needswap) {
-        unsigned char *ocp = (unsigned char *)buf;
-        const unsigned char *icp = 
-            (const unsigned char *)aMsg.Audio().Ptr();
-        const unsigned char *icp0 = icp;
-        if (aMsg.BitDepth() == 16) {
-            swab(aMsg.Audio().Ptr(), buf, bytes);
-        } else if (aMsg.BitDepth() == 24) {
-            while (icp - icp0 <= int(bytes) - 3) {
-                *ocp++ = icp[2];
-                *ocp++ = icp[1];
-                *ocp++ = *icp;
-                icp += 3;
-            }
-        } else if (aMsg.BitDepth() == 32) {
-            // Never seen this but whatever...
-            while (icp - icp0 <= int(bytes) - 4) {
-                *ocp++ = icp[3];
-                *ocp++ = icp[2];
-                *ocp++ = icp[1];
-                *ocp++ = *icp;
-                icp += 4;
-            }
-        }
+        copyswap((unsigned char *)buf, aMsg.Audio().Ptr(), bytes, aMsg.BitDepth());
     } else {
         memcpy(buf, aMsg.Audio().Ptr(), bytes);
     }

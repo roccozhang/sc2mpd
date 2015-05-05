@@ -76,6 +76,9 @@ public:
     void *(*worker)(void *);
 };
 
+extern void copyswap(unsigned char *dest, const unsigned char *src, 
+                     unsigned int bytes, unsigned int bits);
+
 extern AudioEater httpAudioEater;
 extern AudioEater alsaAudioEater;
 

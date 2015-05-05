@@ -187,6 +187,39 @@ static int alsadelay()
     }
 }
 
+class Filter {
+public:
+#define FNS 128
+    Filter() : old(0.0), sum(0.0), idx(0) {
+        for (int i = 0; i < FNS; i++) {
+            buf[i] = 1.0;
+            sum += buf[i];
+        }
+    }
+    float operator()(float ns) {
+#if 0
+        if (old == 0.0) {
+            old = ns;
+        } else {
+            old = (old + ns) / 2;
+        }
+        return old;
+#endif
+#if 1
+        buf[idx++] = ns;
+        sum += ns;
+        if (idx == FNS)
+            idx = 0;
+        sum -= buf[idx];
+        return sum/FNS;
+#endif
+    }
+    float old;
+    float buf[FNS];
+    float sum;
+    int idx;
+};
+
 static void *audioEater(void *cls)
 {
     LOGDEB("audioEater: alsadirect\n");
@@ -201,6 +234,7 @@ static void *audioEater(void *cls)
     qinit = false;
 
     float samplerate_ratio = 1.0;
+    Filter filter;
 
     int src_error = 0;
     SRC_STATE *src_state = 0;
@@ -233,12 +267,12 @@ static void *audioEater(void *cls)
             }
             // BEST_QUALITY yields approx 25% cpu on a core i7
             // 4770T. Obviously too much, actually might not be
-            // sustainable (it's quite 100% of 1 cpu)
+            // sustainable (it's almost 100% of 1 cpu)
             // MEDIUM_QUALITY is around 10%
-            // FASTEST is 4-5%. Given that this is process-wide, probably
-            // a couple % in fact.
-            // To be re-evaluated on the pi... FASTEST is 30% CPU on a Pi2
-            // with USB audio. Curiously it's 25-30% on a Pi1 with i2s audio.
+            // FASTEST is 4-5%. Given that this measured for the full
+            // process, probably a couple % for the conversion in fact.
+            // Rpi: FASTEST is 30% CPU on a Pi2 with USB
+            // audio. Curiously it's 25-30% on a Pi1 with i2s audio.
             src_state = src_new(SRC_SINC_FASTEST, tsk->m_chans, &src_error);
 
             // Number of frames per buffer. This is constant for a
@@ -251,7 +285,7 @@ static void *audioEater(void *cls)
         // present hack sort of works but has a tendancy to keep
         // oscillating (with a very small amplitude). It should be
         // replaced by a proper filter
-        float qs = alsaqueue.qsize();
+        float qs;
         if (qinit) {
             qs = alsaqueue.qsize() + alsadelay() / bufframes;
             float t = ((qstarg - qs) / qstarg);
@@ -266,8 +300,10 @@ static void *audioEater(void *cls)
                     samplerate_ratio = 0.9;
             }
         } else {
+            qs = alsaqueue.qsize();
             samplerate_ratio = 1.0;
         }
+        samplerate_ratio = filter(samplerate_ratio);
 
         unsigned int tot_samples = tsk->m_bytes / (tsk->m_bits/8);
         if ((unsigned int)src_data.input_frames < tot_samples / tsk->m_chans) {
@@ -281,28 +317,56 @@ static void *audioEater(void *cls)
         src_data.src_ratio = samplerate_ratio;
         src_data.end_of_input = 0;
         
+        // Data always comes in host order, because this is what we
+        // request from upstream. 24 and 32 bits are untested.
         switch (tsk->m_bits) {
-        case 16: {
+        case 16: 
+        {
             const short *sp = (const short *)tsk->m_buf;
             for (unsigned int i = 0; i < tot_samples; i++) {
                 src_data.data_in[i] = *sp++;
             }
-            break;
         }
-        case 24:
-        case 32:
+        break;
+        case 24: 
+        {
+            const unsigned char *icp = (const unsigned char *)tsk->m_buf;
+            unsigned int o;
+            unsigned char *ocp = (unsigned char *)&o;
+            ocp[3] = 0;
+            for (unsigned int i = 0; i < tot_samples; i++) {
+                ocp[0] = *icp++;
+                ocp[1] = *icp++;
+                ocp[2] = *icp++;
+                src_data.data_in[i] = o;
+            }
+        }
+        break;
+        case 32: 
+        {
+            const int *ip = (const int *)tsk->m_buf;
+            for (unsigned int i = 0; i < tot_samples; i++) {
+                src_data.data_in[i] = *ip++;
+            }
+        }
+        break;
         default:
-            abort();
+            LOGERR("audioEater:alsa: bad m_bits: " << tsk->m_bits << endl);
+            alsaqueue.setTerminateAndWait();
+            queue->workerExit();
+            return (void *)1;
         }
+
         int ret = src_process(src_state, &src_data);
         if (ret) {
             LOGERR("src_process: " << src_strerror(ret) << endl);
             continue;
         }
+
         {
             static int cnt;
-            if (cnt++ == 100) {
-                LOGDEB("samplerate: " 
+            if (cnt++ == 103) {
+                LOGDEB("audioEater:alsa: " 
                        " qstarg " << qstarg <<
                        " iqsz " << alsaqueue.qsize() <<
                        " qsize " << int(qs) << 
@@ -313,16 +377,21 @@ static void *audioEater(void *cls)
                 cnt = 0;
             }
         }
+
         tot_samples =  src_data.output_frames_gen * tsk->m_chans;
         if (src_data.output_frames_gen > src_data.input_frames) {
             tsk->m_bytes = tot_samples * (tsk->m_bits / 8);
             tsk->m_buf = (char *)realloc(tsk->m_buf, tsk->m_bytes);
-            if (!tsk->m_buf) 
-                abort();
+            if (!tsk->m_buf) {
+                LOGERR("audioEater:alsa: out of memory\n");
+                alsaqueue.setTerminateAndWait();
+                queue->workerExit();
+                return (void *)1;
+            }
         }
 
-        // Output is always 16 bits lsb first for now. We should
-        // probably dither the lsb ?
+        // Convert floats buffer into output which is always 16LE for
+        // now. We should probably dither the lsb ?
         tsk->m_bits = 16;
         {
 #ifdef WORDS_BIGENDIAN
