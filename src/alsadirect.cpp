@@ -198,7 +198,7 @@ public:
             sum += buf[i];
         }
     }
-    float operator()(float ns) {
+    double operator()(double ns) {
         buf[idx++] = ns;
         sum += ns;
         if (idx == FNS)
@@ -206,9 +206,9 @@ public:
         sum -= buf[idx];
         return sum/FNS;
     }
-    float old;
-    float buf[FNS];
-    float sum;
+    double old;
+    double buf[FNS];
+    double sum;
     int idx;
 };
 
@@ -225,7 +225,7 @@ static void *audioEater(void *cls)
 
     qinit = false;
 
-    float samplerate_ratio = 1.0;
+    double samplerate_ratio = 1.0;
     Filter filter;
 
     int src_error = 0;
@@ -280,15 +280,19 @@ static void *audioEater(void *cls)
         // present hack sort of works but could probably benefit from
         // a more scientific approach
 
-        // Qsize in songcast buffers. This is the variable to control
+        // Qsize in frames. This is the variable to control
         double qs;
 
         if (qinit) {
-            qs = alsaqueue.qsize() + alsadelay() / bufframes;
+            qs = alsaqueue.qsize() * bufframes + alsadelay();
             // Error term
-            double et =  ((qstarg - qs) / qstarg);
+            double qstargframes = qstarg * bufframes;
+            double et =  ((qstargframes - qs) / qstargframes);
 
-            // Integral. Not used, made it worse each time I tried
+            // Integral. Not used, made it worse each time I tried.
+            // This is probably because our command is actually the
+            // derivative of the error? I should try a derivative term
+            // instead?
             // it += et;
 
             // Error correction coef
@@ -386,7 +390,7 @@ static void *audioEater(void *cls)
                 LOGDEB("audioEater:alsa: " 
                        " qstarg " << qstarg <<
                        " iqsz " << alsaqueue.qsize() <<
-                       " qsize " << int(qs) << 
+                       " qsize " << int(qs/bufframes) << 
                        " ratio " << samplerate_ratio <<
                        " in " << src_data.input_frames << 
                        " consumed " << src_data.input_frames_used << 
