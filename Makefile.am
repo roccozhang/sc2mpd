@@ -57,6 +57,6 @@ sc2mpd_SOURCES = \
      src/wav.h \
      src/workqueue.h
      
-dist-hook:
-	test -z "`git status -s | grep -v sc2mpd-$(VERSION)`"
-	git tag -f -a sc2mpd-v$(VERSION) -m 'version $(VERSION)'
+#dist-hook:
+#	test -z "`git status -s | grep -v sc2mpd-$(VERSION)`"
+#	git tag -f -a sc2mpd-v$(VERSION) -m 'version $(VERSION)'
