@@ -1,3 +1,9 @@
+sc2mpd (0.11.0-1) unstable; urgency=low
+
+  * Support playing directly to alsa for latency and sample rate control.
+
+ -- Jean-Francois Dockes <jf@dockes.org>  Tue, 04 May 2015 13:39:00 +0200
+
 sc2mpd (0.9.1-1) unstable; urgency=low
 
   * Initial packaging
