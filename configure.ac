@@ -21,6 +21,8 @@ fi
 TOPOH="$withOH"
 AC_SUBST(TOPOH)                     
 
+AC_CHECK_HEADERS([byteswap.h])
+
 AC_CHECK_LIB([pthread], [pthread_create], , [lpthread=no])
 if test X$lpthread = Xno; then
    AC_MSG_ERROR([pthread_create not found in -lpthread])

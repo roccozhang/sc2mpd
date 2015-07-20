@@ -1,24 +1,34 @@
 /* Copyright (C) 2014 J.F.Dockes
- *	 This program is free software; you can redistribute it and/or modify
- *	 it under the terms of the GNU General Public License as published by
- *	 the Free Software Foundation; either version 2 of the License, or
- *	 (at your option) any later version.
+ *       This program is free software; you can redistribute it and/or modify
+ *       it under the terms of the GNU General Public License as published by
+ *       the Free Software Foundation; either version 2 of the License, or
+ *       (at your option) any later version.
  *
- *	 This program is distributed in the hope that it will be useful,
- *	 but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	 GNU General Public License for more details.
+ *       This program is distributed in the hope that it will be useful,
+ *       but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *       GNU General Public License for more details.
  *
- *	 You should have received a copy of the GNU General Public License
- *	 along with this program; if not, write to the
- *	 Free Software Foundation, Inc.,
- *	 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *       You should have received a copy of the GNU General Public License
+ *       along with this program; if not, write to the
+ *       Free Software Foundation, Inc.,
+ *       59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "config.h"
 
 #include <string.h>
 #include <sys/types.h>
 #include <math.h>
+
+#ifdef WORDS_BIGENDIAN
+#if HAVE_BYTESWAP_H
+#include <byteswap.h>
+#define BSWAP16(X) bswap_16(X)
+#else
+#define BSWAP16(X) ((((X) & 0xff) >> 8) | ((X) << 8))
+#else // Little endian -> 
+#define BSWAP16(X) (X)
+#endif
 
 #include <iostream>
 #include <queue>
@@ -168,7 +178,7 @@ static bool alsa_init(const string& dev, AudioMessage *tsk)
     if ((err = snd_pcm_hw_params(pcm, hwparams)) < 0) {
         goto error;
     }
-	
+        
     snd_pcm_hw_params_free(hwparams);
     return true;
 
@@ -348,13 +358,13 @@ static void *audioEater(void *cls)
         case 24: 
         {
             const unsigned char *icp = (const unsigned char *)tsk->m_buf;
-            unsigned int o;
+            int o;
             unsigned char *ocp = (unsigned char *)&o;
-            ocp[3] = 0;
             for (unsigned int i = 0; i < tot_samples; i++) {
                 ocp[0] = *icp++;
                 ocp[1] = *icp++;
                 ocp[2] = *icp++;
+                ocp[3] = (ocp[2] & 0x80) ? 0xff : 0;
                 src_data.data_in[i] = o;
             }
         }
@@ -409,26 +419,39 @@ static void *audioEater(void *cls)
 
         // Convert floats buffer into output which is always 16LE for
         // now. We should probably dither the lsb ?
-        tsk->m_bits = 16;
         {
-#ifdef WORDS_BIGENDIAN
-            unsigned char *ocp = (unsigned char *)tsk->m_buf;
-            short val;
-            unsigned char *icp = (unsigned char *)&val;
-            for (unsigned int i = 0; i < tot_samples; i++) {
-                val = src_data.data_out[i];;
-                *ocp++ = icp[1];
-                *ocp++ = icp[0];
-            }
-            tsk->m_bytes = ocp - tsk->m_buf;
-#else
             short *sp = (short *)tsk->m_buf;
-            for (unsigned int i = 0; i < tot_samples; i++) {
-                *sp++ = src_data.data_out[i];
+            switch (tsk->m_bits) {
+            case 16:
+            {
+                for (unsigned int i = 0; i < tot_samples; i++) {
+                    *sp++ = BSWAP16(src_data.data_out[i]);
+                }
+            }
+            break;
+            case 24:
+            {
+                for (unsigned int i = 0; i < tot_samples; i++) {
+                    *sp++ = BSWAP16(short(int(src_data.data_out[i]) >> 8));
+                }
+            }
+            break;
+            case 32:
+            {
+                for (unsigned int i = 0; i < tot_samples; i++) {
+                    *sp++ = BSWAP16(short(int(src_data.data_out[i]) >> 16));
+                }
+            }
+            break;
+            default:
+                LOGERR("audioEater:alsa: bad m_bits: " << tsk->m_bits << endl);
+                alsaqueue.setTerminateAndWait();
+                queue->workerExit();
+                return (void *)1;
             }
             tsk->m_bytes = (char *)sp - tsk->m_buf;
-#endif
         }
+        tsk->m_bits = 16;
 
         if (!alsaqueue.put(tsk)) {
             LOGERR("alsaEater: queue put failed\n");
