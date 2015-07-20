@@ -26,6 +26,7 @@
 #define BSWAP16(X) bswap_16(X)
 #else
 #define BSWAP16(X) ((((X) & 0xff) >> 8) | ((X) << 8))
+#endif
 #else // Little endian -> 
 #define BSWAP16(X) (X)
 #endif
