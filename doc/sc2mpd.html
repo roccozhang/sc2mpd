@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.7" />
+<meta name="generator" content="AsciiDoc 8.6.9" />
 <title>sc2mpd: helper for upmpdcli Songcast support</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
@@ -87,9 +87,15 @@ ul, ol, li > p {
 ul > li     { color: #aaa; }
 ul > li > * { color: black; }
 
-pre {
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
   padding: 0;
   margin: 0;
+}
+pre {
+  white-space: pre-wrap;
 }
 
 #author {
@@ -219,7 +225,7 @@ div.exampleblock > div.content {
 }
 
 div.imageblock div.content { padding-left: 0; }
-span.image img { border-style: none; }
+span.image img { border-style: none; vertical-align: text-bottom; }
 a.image:visited { color: white; }
 
 dl {
@@ -415,12 +421,6 @@ div.unbreakable { page-break-inside: avoid; }
  *
  * */
 
-tt {
-  font-family: "Courier New", Courier, monospace;
-  font-size: inherit;
-  color: navy;
-}
-
 div.tableblock {
   margin-top: 1.0em;
   margin-bottom: 1.5em;
@@ -453,12 +453,6 @@ div.tableblock > table[frame="vsides"] {
  * html5 specific
  *
  * */
-
-.monospaced {
-  font-family: "Courier New", Courier, monospace;
-  font-size: inherit;
-  color: navy;
-}
 
 table.tableblock {
   margin-top: 1.0em;
@@ -539,6 +533,8 @@ body.manpage div.sectionbody {
 @media print {
   body.manpage div#toc { display: none; }
 }
+
+
 </style>
 <script type="text/javascript">
 /*<![CDATA[*/
@@ -745,54 +741,70 @@ asciidoc.install();
 <div class="paragraph"><p>The <strong>sc2mpd</strong> auxiliary process implements part of Linn <strong>Songcast</strong> support
 for the <strong>upmdcli</strong> UPnP MPD front-end. Specifically, it implements a
 <strong>Songcast</strong> <em>Receiver</em> service, managed by <strong>upmpdcli</strong>.</p></div>
-<div class="paragraph"><p><strong><em>This has mostly been tested with 16 bits sound but a recent change seems
-to have fixed 24 bits sound, so this should be now usable for MACs.  This
-needs mpd 0.19 on the renderer. Still be a bit careful as this is quite new
-and there is a risk of strange noises !</em></strong></p></div>
-<div class="paragraph"><p><strong><em>Do not try 24 bits sound with MPD 0.18 !</em></strong> (or turn the volume very
-low&#8230;). Using Songcast from a Mac (24 bits audio) needs <strong>mpd 0.19</strong>,
-configured with <tt>--disable-audiofile</tt>.</p></div>
-<div class="paragraph"><p>As Debian and Ubuntu tend to lag quite bit on MPD progresses, I have setup
+<div class="paragraph"><p>To use it, you need the
+<a href="http://www.linn.co.uk/software#songcast">Linn Songcast application</a>
+installed on a Microsoft Windows or Apple Mac OS X PC. See
+<a href="#whatis_songcast">further</a> for more explanations about what this does.</p></div>
+<div class="paragraph"><p><strong>sc2mpd</strong> has mostly been tested with 16 bits sound but a recent change
+seems to have fixed 24 bits sound, so this should be now usable for
+MACs. <strong><em>This needs mpd 0.19 on the renderer. Do not try 24 bits sound with
+mpd 0.18 !</em></strong> (or turn the volume very low&#8230;). Using Songcast from a Mac (24
+ bits audio) needs <strong>mpd 0.19</strong>, configured with <code>--disable-audiofile</code>.
+As Debian and Ubuntu tend to lag quite bit on MPD progresses, I have set up
 <a href="downloads.html#mpd">backport repositories</a> for recent mpd versions
 (currently 0.19.9), for Ubuntu, Debian i386/amd64 and Raspbian.</p></div>
-<div class="paragraph"><p><strong>NEW: Debian packages for sc2mpd:</strong> as the procedure for building sc2mpd is
-not completely obvious and automatic, I have also added <strong>sc2mpd</strong> packages
-to the <strong>upmpdcli</strong> Debian repository. Packages exist for architectures i386,
-amd64 and Raspberry Pi. You can follow the procedure on the
-<a href="downloads.html">upmpdcli download page</a> to add the repository, then
-just use the following to install sc2mpd:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><tt>sudo apt-get install sc2mpd</tt></pre>
-</div></div>
+<div class="paragraph"><p>And to conclude the misc warnings section: <strong>there is no software volume
+control</strong> of the Songcast Receivers for now: use either a local mixer or the
+little round things on the power amps.</p></div>
+<div class="paragraph"><p>There are Debian Wheezy <strong>sc2mpd</strong>
+packages in the <strong>upmpdcli</strong> repository for i386, amd64 and Raspberry Pi
+(Raspbian): see the <a href="downloads.html">upmpdcli download page</a>, so you do
+not need to build any software if you use these systems.</p></div>
 <div class="admonitionblock">
 <table><tr>
 <td class="icon">
 <div class="title">Note</div>
 </td>
-<td class="content">For rebuilding from the source package: the installed binary has a
-static link to the OpenHome libraries. This means that, in order to rebuild
-from the source package, you need to follow the normal procedure to build
-the OpenHome libs first (see the ohbuild.sh script further down). The build
-tree should be located under /opt/openhome for the package rebuild to work.</td>
+<td class="content">you know what Songcast is and have a Rasberry PI which wants to play:
+<a href="#rpi_quick">quick install for the Raspberry PI</a>  (also works for i386
+and amd64 Debian Wheezy).</td>
 </tr></table>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_what_is_songcast">What is Songcast</h2>
+<h2 id="whatis_songcast">What is Linn Songcast</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Songcast is a protocol for transporting audio streams across the
-network. This is independant from the UPnP framework which mostly deals
-with URLs and audio files (usually, but not necessarily, compressed).</p></div>
-<div class="paragraph"><p>The streams transported by Songcast are actual real-time audio data, which
-can go straight to an audio card for playing.</p></div>
-<div class="paragraph"><p>Controlling the streams on the renderer (connecting, starting, stopping) is
-done through an UPnP service named OpenHome <em>Receiver</em>.</p></div>
-<div class="paragraph"><p>The typical use of Songcast is to have an audio driver on a Windows or OS X
-desktop capture and forward the audio stream to a remote Songcast device.</p></div>
-<div class="paragraph"><p>Any application on the desktop will (be compelled to) transparently play to
-the remote device, without need to know anything about Songcast.</p></div>
+<div class="paragraph"><p><strong>Songcast</strong> is a protocol for transporting audio streams across the network,
+developped by <a href="http://oss.linn.co.uk/trac/wiki/Songcast">Linn</a> as a
+series of open-source libraries and applications.</p></div>
+<div class="paragraph"><p>The protocol links two types of entities:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+A <strong>Songcast</strong> <em>Sender</em> generates an audio stream (Windows or Mac).
+</p>
+</li>
+<li>
+<p>
+<strong>Songcast</strong> <em>Receivers</em> receive and play the stream.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>There are <strong>Songcast</strong> applications (<em>Senders</em>) for Windows and Mac OS X
+(nothing for Linux, iOS or Android for now). The <strong>Songcast</strong> application
+captures and forward the system audio stream to a remote <strong>Songcast</strong>
+<em>Receiver</em>.</p></div>
+<div class="paragraph"><p><strong>Any</strong> application on the desktop (Windows Media Player, Spotify, Tidal,
+etc.) will transparently play to the remote device, without any need to
+know about <strong>Songcast</strong>. <strong><em>Any</em></strong> audio service available on Windows or the
+Mac can be forwarded to one or <a href="scmulti.html">many</a> audio players around
+the house.</p></div>
+<div class="paragraph"><p>The <strong>Songcast</strong> streams are real-time audio data, which can go straight
+to an audio card for playing.</p></div>
+<div class="paragraph"><p>Controlling the streams (connecting, starting, stopping) is
+done through an UPnP service named OpenHome <em>Receiver</em>, which runs on an
+UPnP Media Renderer implementing the OpenHome services (e.g. <strong>upmpdcli</strong>).</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -801,19 +813,35 @@ the remote device, without need to know anything about Songcast.</p></div>
 <div class="paragraph"><p><strong>upmpdcli</strong> implements the <em>Receiver</em> service, and uses an auxiliary process
 (<strong>sc2mpd</strong>) for transporting the audio data. <strong>sc2mpd</strong> is a slight
 modification of the sample program which comes with the Linn Songcast
-open-source implementation, with the addition of an HTTP interface (based
-on <em>libmicrohttpd</em>) to forward the data to <strong>mpd</strong>.</p></div>
-<div class="paragraph"><p>Setting up a connection happens as follows:</p></div>
+open-source implementation</p></div>
+<div class="paragraph"><p><strong>sc2mpd</strong> can play the audio stream in two modes:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-If it finds an executable <strong>sc2mpd</strong> command in the PATH when starting up,
-  <strong>upmpdcli</strong> advertises a <em>Receiver</em> service.
+By offering a local HTTP interface (based on <em>libmicrohttpd</em>) from which
+   <strong>mpd</strong> will play the stream.
 </p>
 </li>
 <li>
 <p>
-The Songcast implementation from the desktop finds out about the
+By directly using the <strong>alsa</strong> audio driver. <strong><em>This only works with 16
+   bits sound for now (so only with a Windows sender, no Macs allowed)</em></strong>
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>What approach is used is decided by a parameter in the upmpdcli
+configuration file: <code>scplaymethod</code> (see <a href="#Configuration">[Configuration]</a> further)</p></div>
+<div class="paragraph"><p>Control:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+If <strong>upmpdcli</strong> finds an executable <strong>sc2mpd</strong> command in the PATH when
+  starting up, it advertises a <em>Receiver</em> service.
+</p>
+</li>
+<li>
+<p>
+The <strong>Songcast</strong> application on the desktop finds out about the
   <em>Receiver</em> through the normal UPnP mechanisms and can be instructed to
   use it. It then tells the <em>Receiver</em> in <strong>upmpdcli</strong> to start playing.
 </p>
@@ -821,36 +849,88 @@ The Songcast implementation from the desktop finds out about the
 <li>
 <p>
 <strong>upmdpcli</strong> starts the <strong>sc2mpd</strong> process, which gets ready to receive data
-  through Songcast, and make it available through HTTP.
+  through Songcast, and either play it directly or make it available
+  through HTTP.
 </p>
 </li>
 <li>
 <p>
-<strong>upmpdcli</strong> instructs <strong>mpd</strong> to play the URL for the <strong>sc2mpd</strong> output.
+If the <em><code>mpd</code></em> method is in use, <strong>upmpdcli</strong> instructs <strong>mpd</strong> to play the
+  URL for the <strong>sc2mpd</strong> output.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>There is currently a 10-12 S delay between the connection request and the
-moment the audio starts playing. This is not normal, but I could not find
-the reason for it, so it&#8217;s an unavoidable inconvenience at the moment.</p></div>
+<div class="paragraph"><p>When using <em><code>mpd</code></em> more bufferisation occurs and there may be a significant
+delay (up to around 10S) between the time when Songcast is activated and
+the time sound appears.</p></div>
+<div class="paragraph"><p>Given the bufferisation and delay control issues when going through MPD,
+only the <em><code>alsa</code></em> method is usable in multi-room configurations. Even with a
+single player, the <em><code>mpd</code></em> method will experience skips from time to
+time. The reasons are explained in the <a href="scmulti.html">multi-room</a>
+page.</p></div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_configuration">Configuration</h2>
+<h2 id="rpi_quick">Quick install for Debian Wheezy systems</h2>
 <div class="sectionbody">
+<div class="paragraph"><p>There are packages available for Raspbian and Debian Wheezy i386 and amd64.</p></div>
+<div class="paragraph"><p>So add the repositories:</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>echo deb http://www.lesbonscomptes.com/upmpdcli/downloads/debian/ unstable main | sudo tee /etc/apt/sources.list.d/upmpdcli.list
+echo deb-src http://www.lesbonscomptes.com/upmpdcli/downloads/debian/ unstable main | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list
+echo deb http://www.lesbonscomptes.com/upmpdcli/downloads/mpd-debian/ unstable main  | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list
+echo deb-src http://www.lesbonscomptes.com/upmpdcli/downloads/mpd-debian/ unstable main  | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list</code></pre>
+</div></div>
+<div class="paragraph"><p>Install (the mpd and libupnp versions in the repo have bug fixes):</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>sudo apt-get update
+sudo apt-get install upmpdcli sc2mpd mpd libupnp6</code></pre>
+</div></div>
+<div class="paragraph"><p>And seed the next section for configuring.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="Configuration">Configuration</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_on_the_receiver_side">On the Receiver side</h3>
 <div class="paragraph"><p>No configuration is necessary by default: if <strong>sc2mpd</strong> is present,
 <strong>upmpdcli</strong> will advertise the Songcast capability, and any host with a
 Songcast sender installed should be able to use it.</p></div>
 <div class="paragraph"><p>However, you can set a number of values in the upmpdcli configuration file
-(you <strong>must</strong> set the <strong>upmpdcli</strong> <tt>-c</tt> option for <strong>sc2mpd</strong> to see them, the
+(you <strong>must</strong> set the <strong>upmpdcli</strong> <code>-c</code> option for <strong>sc2mpd</strong> to see them, the
 environment variable will not work):</p></div>
 <div class="dlist"><dl>
+<dt class="hdlist1">
+scplaymethod
+</dt>
+<dd>
+<p>
+This decides how audio is played, with 2 possible
+values, <em><code>alsa</code></em> or <em><code>mpd</code></em>. Using <em><code>mpd</code></em> is somewhat easier, but
+unusable in <a href="scmulti.html">multi-room</a> configurations, and you risk
+small drops even in single-player settings.
+</p>
+</dd>
+<dt class="hdlist1">
+scalsadevice
+</dt>
+<dd>
+<p>
+If the <em><code>alsa</code></em> method is set, the <code>scalsadevice</code>
+parameter defines the interface name. Use <code>aplay -L</code> to find the
+appropriate name. Also check that user <em><code>upmpdcli</code></em> belongs to the
+<em><code>audio</code></em> group.
+</p>
+</dd>
 <dt class="hdlist1">
 sclogfilename
 </dt>
 <dd>
 <p>
-Name of the file which will receive <strong>sc2mpd</strong> log messages. <tt>stderr</tt> by
+Name of the file which will receive <strong>sc2mpd</strong> log messages. <code>stderr</code> by
 default. This <em>can&#8217;t be</em> the same file used by <strong>upmpdcli</strong>.
 </p>
 </dd>
@@ -867,9 +947,9 @@ schttpport
 </dt>
 <dd>
 <p>
-HTTP port used by <strong>mpd</strong> to connect to <strong>sc2mpd</strong>. 8888 by default. This must
-be an available port on <tt>localhost</tt>, and it will only accept connections from
-<tt>localhost</tt>.
+If the <em><code>mpd</code></em> method is set, this defines the HTTP port used by <strong>mpd</strong> to
+connect to <strong>sc2mpd</strong>. 8768 by default. This must be an available port on
+<code>localhost</code>, and it will only accept connections from <code>localhost</code>.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -877,13 +957,31 @@ sc2mpd
 </dt>
 <dd>
 <p>
-Path for the <strong>sc2mpd</strong> executable file (e.g. <tt>/usr/local/bin/sc2mpd</tt>). Only
+Path for the <strong>sc2mpd</strong> executable file (e.g. <code>/usr/local/bin/sc2mpd</code>). Only
 useful if <strong>sc2mpd</strong> was not installed to a location in the executable $PATH
-set for the init scripts. Typically only <tt>/bin</tt> and <tt>/usr/bin</tt> are in
-there.
+set for the init scripts. Typically only <code>/bin</code> and <code>/usr/bin</code> are in
+there. This allows <strong>upmpdcli</strong> to find <strong>sc2mpd</strong> if it is not in the standard
+location.
 </p>
 </dd>
 </dl></div>
+</div>
+<div class="sect2">
+<h3 id="_on_the_sender_windows_mac_side">On the Sender (Windows/Mac) side</h3>
+<div class="paragraph"><p>I could not get IP multicast to work with WIFI Receivers (the sound drops
+constantly).</p></div>
+<div class="paragraph"><p>There are well-known problems with multicast and WIFI (see for example
+<a href="http://superuser.com/questions/730288/why-do-some-wifi-routers-block-multicast-packets-going-from-wired-to-wireless">this
+superuser.com question</a>
+for detailed explanations). This seems to be dependant on the WIFI hardware
+(router/access points) used, so maybe you will have more luck than me.</p></div>
+<div class="paragraph"><p>If some of your Receivers use WIFI, and you experience sound issues, check
+that "Unicast" is selected in the Songcast configuration "advanced" panel
+on the desktop.</p></div>
+<div class="paragraph"><p>Under most conditions, WIFI data rates should be more than sufficient to
+transport Songcast streams (a bit over 1 Mbit/S for 48k/24bits, 700 Kbits/S
+for 44.1k/16 bits).</p></div>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -902,20 +1000,40 @@ Building <strong>sc2mpd</strong> proper
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>First clone the <strong>sc2mpd</strong> Github repository:
-<a href="http://www.github.com/medoc92/sc2mpd">http://www.github.com/medoc92/sc2mpd</a>.</p></div>
-<div class="paragraph"><p><strong>sc2mpd</strong> depends on the microhttpd library. Install the development and
-runtime packages which are currently named <em>libmicrohttpd-dev</em> and
-<em>libmicrohttpd10</em> on Debian-derived systems (use <em>libmicrohttpd</em> and
-<em>libmicrohttpd-devel</em> for Fedora).</p></div>
+<div class="paragraph"><p>First download a
+<a href="http://www.lesbonscomptes.com/upmpdcli/downloads.html"><strong>sc2mpd</strong>
+release</a> or clone the <strong>sc2mpd</strong>
+<a href="http://www.github.com/medoc92/sc2mpd">Github repository</a>.</p></div>
+<div class="paragraph"><p><strong>sc2mpd</strong> depends on a number of libraries:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+The <a href="http://www.gnu.org/software/libmicrohttpd/">microhttpd</a>
+  library. Install the development and runtime packages which are currently
+  named <em>libmicrohttpd-dev</em> and <em>libmicrohttpd10</em> on Debian-derived systems
+  (use <em>libmicrohttpd</em> and <em>libmicrohttpd-devel</em> for Fedora).
+</p>
+</li>
+<li>
+<p>
+The <a href="http://www.mega-nerd.com/SRC/">libsamplerate</a>
+  library. <em>libsamplerate0</em> on debian-derived systems.
+</p>
+</li>
+<li>
+<p>
+The <strong>libasound</strong> Alsa interface library (<em>libasound2</em>).
+</p>
+</li>
+</ul></div>
 <div class="paragraph"><p>Building the Openhome libraries is a bit of a black art, and the <strong>sc2mpd</strong>
 source comes with an <em>ohbuild.sh</em> script which will try to clone the
 Openhome Git repositories and build the libs:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>cd sc2mpd
+<pre><code>cd sc2mpd
 mkdir /my/place/for/openhome
-sh ohbuild.sh /my/place/for/openhome</tt></pre>
+sh ohbuild.sh /my/place/for/openhome</code></pre>
 </div></div>
 <div class="paragraph"><p>Miscellaneous error messages will be displayed during the build. Hope for
 the best&#8230;</p></div>
@@ -923,14 +1041,15 @@ the best&#8230;</p></div>
 <em>sc2mpd</em> directory:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>sh autogen.sh
+<pre><code>sh autogen.sh
 ./configure --prefix=/usr --with-openhome=/my/place/for/openhome
 make
-sudo make install</tt></pre>
+sudo make install</code></pre>
 </div></div>
 <div class="paragraph"><p>The build uses static Openhome libraries, so you can move the executable to
 another machine without needing the Openhome directory (don&#8217;t forget to
-install the <em>libmicrohttpd</em> runtime though).</p></div>
+install the <em>libmicrohttpd</em>, <em>libsamplerate</em> and <em>libasound</em> runtimes
+though).</p></div>
 <div class="paragraph"><p>After restarting <strong>upmpdcli</strong>, it should advertise the <em>Receiver</em> service and
 appear in the Songcast Sender menus.</p></div>
 </div>
@@ -947,7 +1066,7 @@ suspect.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-04-07 16:20:40 CEST
+Last updated 2015-07-19 18:32:36 CEST
 </div>
 </div>
 </body>
