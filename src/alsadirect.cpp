@@ -420,27 +420,49 @@ static void *audioEater(void *cls)
 
         // Convert floats buffer into output which is always 16LE for
         // now. We should probably dither the lsb ?
+	// The libsamplerate output values can overshoot the input range 
+	// (see http://www.mega-nerd.com/SRC/faq.html#Q001), so we take care 
+	// to clip the values.
         {
             short *sp = (short *)tsk->m_buf;
             switch (tsk->m_bits) {
             case 16:
             {
                 for (unsigned int i = 0; i < tot_samples; i++) {
-                    *sp++ = BSWAP16(src_data.data_out[i]);
+                    int v = src_data.data_out[i];
+                    if (v > 32767) {
+                        v = 32767;
+                    } else if (v < -32768) {
+                        v = -32768;
+                    }
+                    *sp++ = BSWAP16(short(v));
                 }
             }
             break;
             case 24:
             {
                 for (unsigned int i = 0; i < tot_samples; i++) {
-                    *sp++ = BSWAP16(short(int(src_data.data_out[i]) >> 8));
+                    int v = src_data.data_out[i];
+                    if (v > (1 << 23) - 1) {
+                        v = (1 << 23) - 1;
+                    } else if (v < -(1 << 23)) {
+                        v = -(1 << 23);
+                    }
+                    *sp++ = BSWAP16(short(v >> 8));
                 }
             }
             break;
             case 32:
             {
                 for (unsigned int i = 0; i < tot_samples; i++) {
-                    *sp++ = BSWAP16(short(int(src_data.data_out[i]) >> 16));
+                    float& f = src_data.data_out[i];
+                    int v = f;
+                    if (f > 0 && v < 0) {
+                        v = unsigned(1 << 31) - 1;
+                    } else if (f < 0 && v > 0) {
+                        v = -unsigned(1 << 31);
+                    }
+                    *sp++ = BSWAP16(short(v >> 16));
                 }
             }
             break;
