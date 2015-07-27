@@ -417,16 +417,8 @@ int CDECL main(int aArgc, char* aArgv[])
             return 1;
     }
 
-    int port = 8768;
-    string value;
-    if (config.get("schttpport", value)) {
-        port = atoi(value.c_str());
-    }
-
-    string alsadevice("default");
-    config.get("scalsadevice", alsadevice);    
-
     config.get("sclogfilename", logfilename);
+    string value;
     if (config.get("scloglevel", value))
         loglevel = atoi(value.c_str());
     if (Logger::getTheLog(logfilename) == 0) {
@@ -440,8 +432,7 @@ int CDECL main(int aArgc, char* aArgv[])
            ((subnet >> 24) & 0xff) << endl);
 
     AudioEater::Context *ctxt = new AudioEater::Context(&audioqueue);
-    ctxt->port = port;
-    ctxt->alsadevice = alsadevice;
+    ctxt->config = &config;
 
     OhmReceiverDriver* driver = 
         new OhmReceiverDriver(optionDevice.Value() ? 

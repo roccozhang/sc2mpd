@@ -49,6 +49,8 @@ public:
     unsigned int m_curoffs; /* Used by the http data emitter */
 };
 
+class ConfSimple;
+
 // Def for the downstream module which can be using either http to mpd
 // or direct alsa. No effort is done for easy expansion to other
 // modules, e.g. this would need to add stuff to the Context thing
@@ -61,8 +63,7 @@ public:
     struct Context {
         Context(WorkQueue<AudioMessage*> *q) : queue(q) {}
         WorkQueue<AudioMessage*> *queue;
-        int port;
-        std::string alsadevice;
+        ConfSimple *config;
     };
 
     // Constructor called by downstream module to set its params

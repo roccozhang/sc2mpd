@@ -39,6 +39,7 @@
 
 #include "log.h"
 #include "rcvqueue.h"
+#include "conftree.h"
 
 using namespace std;
 
@@ -223,13 +224,55 @@ public:
     int idx;
 };
 
+// Convert config parameter to libsamplerate converter type
+static int src_cvt_type(ConfSimple *config)
+{
+    int tp = SRC_SINC_FASTEST;
+    if (!config)
+        return tp;
+    string value;
+    if (!config->get("sccvttype", value))
+        return tp;
+    LOGDEB("src_cvt_type. conf string [" << value << "]\n");
+    if (!value.compare("SRC_SINC_BEST_QUALITY")) {
+        tp = SRC_SINC_BEST_QUALITY;
+    } else if (!value.compare("SRC_SINC_MEDIUM_QUALITY")) {
+        tp = SRC_SINC_MEDIUM_QUALITY;
+    } else if (!value.compare("SRC_SINC_FASTEST")) {
+        tp = SRC_SINC_FASTEST;
+    } else if (!value.compare("SRC_ZERO_ORDER_HOLD")) {
+        tp = SRC_ZERO_ORDER_HOLD;
+    } else if (!value.compare("SRC_LINEAR")) {
+        tp = SRC_LINEAR;
+    } else {
+        // Allow numeric values for transparent expansion to
+        // hypothetic libsamplerate updates (allowing this is explicit
+        // in the libsamplerate doc).
+        long int lval;
+        char *cp;
+        lval = strtol(value.c_str(), &cp, 10);
+        if (cp != value.c_str()) {
+            tp = int(lval);
+        } else {
+            LOGERR("Invalid converter type [" << value << 
+                   "] using SRCC_SINC_FASTEST" << endl);
+        }
+    }
+    return tp;
+
+}
 static void *audioEater(void *cls)
 {
-    LOGDEB("audioEater: alsadirect\n");
     AudioEater::Context *ctxt = (AudioEater::Context*)cls;
 
+    int cvt_type = src_cvt_type(ctxt->config);
+    LOGDEB("audioEater: alsadirect. Will use converter type " << 
+           cvt_type << endl);
+
+    string alsadevice("default");
+    ctxt->config->get("scalsadevice", alsadevice);    
+
     WorkQueue<AudioMessage*> *queue = ctxt->queue;
-    string alsadevice = ctxt->alsadevice;
 
     delete ctxt;
     ctxt = 0;
@@ -279,7 +322,7 @@ static void *audioEater(void *cls)
             // process, probably a couple % for the conversion in fact.
             // Rpi: FASTEST is 30% CPU on a Pi2 with USB
             // audio. Curiously it's 25-30% on a Pi1 with i2s audio.
-            src_state = src_new(SRC_SINC_FASTEST, tsk->m_chans, &src_error);
+            src_state = src_new(cvt_type, tsk->m_chans, &src_error);
 
             // Number of frames per buffer. This is constant for a
             // given stream (depends on fe, Songcast buffers are 10mS)

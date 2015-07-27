@@ -30,6 +30,7 @@
 #include "log.h"
 #include "rcvqueue.h"
 #include "wav.h"
+#include "conftree.h"
 
 using namespace std;
 
@@ -295,14 +296,20 @@ static void *audioEater(void *cls)
     LOGDEB("audioEater: http\n");
     AudioEater::Context *ctxt = (AudioEater::Context*)cls;
 
-    LOGDEB("audioEater: queue " << ctxt->queue << " HTTP port " << ctxt->port 
+    int port = 8768;
+    string value;
+    if (ctxt->config->get("schttpport", value)) {
+        port = atoi(value.c_str());
+    }
+
+    LOGDEB("audioEater: queue " << ctxt->queue << " HTTP port " << port 
            << endl);
 
     struct MHD_Daemon *daemon = 
         MHD_start_daemon(
             MHD_USE_THREAD_PER_CONNECTION,
             //MHD_USE_SELECT_INTERNALLY, 
-            ctxt->port, 
+            port, 
             /* Accept policy callback and arg */
             accept_policy, NULL, 
             /* handler and arg */

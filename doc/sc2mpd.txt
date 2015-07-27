@@ -136,9 +136,16 @@ However, you can set a number of values in the upmpdcli configuration file
 (you *must* set the *upmpdcli* `-c` option for *sc2mpd* to see them, the
 environment variable will not work):
 
+sclogfilename:: 
+Name of the file which will receive *sc2mpd* log messages. `stderr` by
+default. This _can't be_ the same file used by *upmpdcli*.
+
+scloglevel:: 
+Log verbosity.  
+
 scplaymethod:: 
-This decides how audio is played, with 2 possible
-values, _`alsa`_ or _`mpd`_. Using _`mpd`_ is somewhat easier, but
+Used by *upmpdcli* and *sc2mpd*.  This decides how audio is played, with 2
+possible values, _`alsa`_ or _`mpd`_. Using _`mpd`_ is somewhat easier, but
 unusable in link:scmulti.html[multi-room] configurations, and you risk
 small drops even in single-player settings.
 
@@ -148,12 +155,12 @@ parameter defines the interface name. Use `aplay -L` to find the
 appropriate name. Also check that user _`upmpdcli`_ belongs to the
 _`audio`_ group.
 
-sclogfilename:: 
-Name of the file which will receive *sc2mpd* log messages. `stderr` by
-default. This _can't be_ the same file used by *upmpdcli*.
-
-scloglevel:: 
-Log verbosity.  
+sccvttype::
+If the _`alsa`_ play method is used, this defines the libsamplerate
+converter type. See http://www.mega-nerd.com/SRC/api_misc.html#Converters.
+The default is to use SRC_CVT_FASTEST, resulting in around 24% CPU usage
+for sc2mpd processing a 16 bits stream on a Raspberry Pi 1. The value can
+be specified either as a string (e.g SRC_SINC_FASTEST), or a value (e.g 2).
 
 schttpport:: 
 If the _`mpd`_ method is set, this defines the HTTP port used by *mpd* to
@@ -161,11 +168,11 @@ connect to *sc2mpd*. 8768 by default. This must be an available port on
 `localhost`, and it will only accept connections from `localhost`.
 
 sc2mpd:: 
-Path for the *sc2mpd* executable file (e.g. `/usr/local/bin/sc2mpd`). Only
-useful if *sc2mpd* was not installed to a location in the executable $PATH
-set for the init scripts. Typically only `/bin` and `/usr/bin` are in
-there. This allows *upmpdcli* to find *sc2mpd* if it is not in the standard
-location.
+Used by *upmpdcli*. Path for the *sc2mpd* executable file
+(e.g. `/usr/local/bin/sc2mpd`). Only useful if *sc2mpd* was not installed
+to a location in the executable $PATH set for the init scripts. Typically
+only `/bin` and `/usr/bin` are in there. This allows *upmpdcli* to find
+*sc2mpd* if it is not in the standard location.
 
 === On the Sender (Windows/Mac) side
 

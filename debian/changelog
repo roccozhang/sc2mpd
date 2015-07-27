@@ -1,3 +1,10 @@
+sc2mpd (0.11.1-1) unstable; urgency=low
+
+  * Fix direct alsa playing for 24 bits incoming stream (from Mac).
+  * Allow choosing the quality of samplerate conversion
+
+ -- Jean-Francois Dockes <jf@dockes.org>  Mon, 27 Jul 2015 10:30:00 +0200
+
 sc2mpd (0.11.0-1) unstable; urgency=low
 
   * Support playing directly to alsa for latency and sample rate control.
