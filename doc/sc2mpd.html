@@ -749,17 +749,9 @@ for the <strong>upmdcli</strong> UPnP MPD front-end. Specifically, it implements
 <a href="http://www.linn.co.uk/software#songcast">Linn Songcast application</a>
 installed on a Microsoft Windows or Apple Mac OS X PC. See
 <a href="#whatis_songcast">further</a> for more explanations about what this does.</p></div>
-<div class="paragraph"><p><strong>sc2mpd</strong> has mostly been tested with 16 bits sound but a recent change
-seems to have fixed 24 bits sound, so this should be now usable for
-MACs. <strong><em>This needs mpd 0.19 on the renderer. Do not try 24 bits sound with
-mpd 0.18 !</em></strong> (or turn the volume very low&#8230;). Using Songcast from a Mac (24
- bits audio) needs <strong>mpd 0.19</strong>, configured with <tt>--disable-audiofile</tt>.
-As Debian and Ubuntu tend to lag quite bit on MPD progresses, I have set up
-<a href="downloads.html#mpd">backport repositories</a> for recent mpd versions
-(currently 0.19.9), for Ubuntu, Debian i386/amd64 and Raspbian.</p></div>
-<div class="paragraph"><p>And to conclude the misc warnings section: <strong>there is no software volume
-control</strong> of the Songcast Receivers for now: use either a local mixer or the
-little round things on the power amps.</p></div>
+<div class="paragraph"><p>Warning: <strong>there is no software volume control</strong> of the Songcast Receivers
+for now: use either a local mixer or the little round things on the power
+amps. Set it low when experimenting !</p></div>
 <div class="paragraph"><p>There are Debian Wheezy <strong>sc2mpd</strong>
 packages in the <strong>upmpdcli</strong> repository for i386, amd64 and Raspberry Pi
 (Raspbian): see the <a href="downloads.html">upmpdcli download page</a>, so you do
@@ -866,6 +858,21 @@ If the <em><tt>mpd</tt></em> method is in use, <strong>upmpdcli</strong> instruc
 <div class="paragraph"><p>When using <em><tt>mpd</tt></em> more bufferisation occurs and there may be a significant
 delay (up to around 10S) between the time when Songcast is activated and
 the time sound appears.</p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+NOTE
+</dt>
+<dd>
+<p>
+When using <em><tt>mpd</tt></em>, from a Mac (24 bits audio) you need <strong>mpd 0.19</strong>,
+configured with <tt>--disable-audiofile</tt>, else you risk producing high volume
+noise.  As Debian and Ubuntu tend to lag quite bit on MPD progresses, I
+have set up <a href="downloads.html#mpd">backport repositories</a> for
+appropriately configured recent mpd versions (currently 0.19.9), for
+Ubuntu, Debian i386/amd64 and Raspbian.
+</p>
+</dd>
+</dl></div>
 <div class="paragraph"><p>Given the bufferisation and delay control issues when going through MPD,
 only the <em><tt>alsa</tt></em> method is usable in multi-room configurations. Even with a
 single player, the <em><tt>mpd</tt></em> method will experience skips from time to
@@ -1081,7 +1088,7 @@ suspect.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-07-27 09:57:59 CEST
+Last updated 2015-07-27 10:46:37 CEST
 </div>
 </div>
 </body>

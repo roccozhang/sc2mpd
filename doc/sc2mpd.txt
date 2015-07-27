@@ -9,18 +9,9 @@ link:http://www.linn.co.uk/software#songcast[Linn Songcast application]
 installed on a Microsoft Windows or Apple Mac OS X PC. See
 xref:whatis_songcast[further] for more explanations about what this does.
 
-*sc2mpd* has mostly been tested with 16 bits sound but a recent change
-seems to have fixed 24 bits sound, so this should be now usable for
-MACs. *_This needs mpd 0.19 on the renderer. Do not try 24 bits sound with
-mpd 0.18 !_* (or turn the volume very low...). Using Songcast from a Mac (24
- bits audio) needs *mpd 0.19*, configured with `--disable-audiofile`.
-As Debian and Ubuntu tend to lag quite bit on MPD progresses, I have set up 
-link:downloads.html#mpd[backport repositories] for recent mpd versions
-(currently 0.19.9), for Ubuntu, Debian i386/amd64 and Raspbian.
-
-And to conclude the misc warnings section: *there is no software volume
-control* of the Songcast Receivers for now: use either a local mixer or the
-little round things on the power amps.
+Warning: *there is no software volume control* of the Songcast Receivers
+for now: use either a local mixer or the little round things on the power
+amps. Set it low when experimenting !
 
 There are Debian Wheezy *sc2mpd*
 packages in the *upmpdcli* repository for i386, amd64 and Raspberry Pi
@@ -98,6 +89,13 @@ When using _`mpd`_ more bufferisation occurs and there may be a significant
 delay (up to around 10S) between the time when Songcast is activated and
 the time sound appears. 
 
+NOTE:: When using _`mpd`_, from a Mac (24 bits audio) you need *mpd 0.19*,
+configured with `--disable-audiofile`, else you risk producing high volume
+noise.  As Debian and Ubuntu tend to lag quite bit on MPD progresses, I
+have set up link:downloads.html#mpd[backport repositories] for
+appropriately configured recent mpd versions (currently 0.19.9), for
+Ubuntu, Debian i386/amd64 and Raspbian.
+
 Given the bufferisation and delay control issues when going through MPD,
 only the _`alsa`_ method is usable in multi-room configurations. Even with a
 single player, the _`mpd`_ method will experience skips from time to
@@ -122,7 +120,7 @@ Install (the mpd and libupnp versions in the repo have bug fixes):
     sudo apt-get update 
     sudo apt-get install upmpdcli sc2mpd mpd libupnp6
 
-And seed the next section for configuring.
+And see the next section for configuring.
 
 [[Configuration]]
 == Configuration
