@@ -73,8 +73,7 @@ open-source implementation
 
  - By offering a local HTTP interface (based on _libmicrohttpd_) from which
    *mpd* will play the stream.
- - By directly using the *alsa* audio driver. *_This only works with 16
-   bits sound for now (so only with a Windows sender, no Macs allowed)_*
+ - By directly using the *alsa* audio driver.
 
 What approach is used is decided by a parameter in the upmpdcli
 configuration file: `scplaymethod` (see <<Configuration>> further)
