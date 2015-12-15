@@ -81,8 +81,7 @@ static void *alsawriter(void *p)
             return (void*)1;
         }
         // Bufs 
-        snd_pcm_uframes_t frames = 
-            tsk->m_bytes / (tsk->m_chans * (tsk->m_bits/8));
+        snd_pcm_uframes_t frames = tsk->frames();
         snd_pcm_sframes_t ret =  snd_pcm_writei(pcm, tsk->m_buf, frames);
         if (ret != int(frames)) {
             LOGERR("snd-cm_writei(" << frames <<" frames) failed: ret: " <<
@@ -286,11 +285,20 @@ static void *audioEater(void *cls)
     SRC_STATE *src_state = 0;
     SRC_DATA src_data;
     memset(&src_data, 0, sizeof(src_data));
-
+    // Current size of the samplerate input buffer. We always alloc
+    // twice the size for output (allocated on first use).
+    size_t src_input_bytes = 0;
+    
     alsaqueue.start(1, alsawriter, 0);
 
     // Integral term. We do not use it at the moment
     // double it = 0;
+
+    // Number of frames per buffer. This is mostly constant for a
+    // given stream (depends on fe and buffer time, Windows Songcast
+    // buffers are 10mS, so 441 frames at cd q). Recomputed on first
+    // buf, the init is to avoid warnings
+    int bufframes = 441;
 
     while (true) {
         AudioMessage *tsk = 0;
@@ -307,7 +315,6 @@ static void *audioEater(void *cls)
             continue;
         }
 
-        int bufframes = 441;
         if (src_state == 0) {
             if (!alsa_init(alsadevice, tsk)) {
                 alsaqueue.setTerminateAndWait();
@@ -324,11 +331,9 @@ static void *audioEater(void *cls)
             // audio. Curiously it's 25-30% on a Pi1 with i2s audio.
             src_state = src_new(cvt_type, tsk->m_chans, &src_error);
 
-            // Number of frames per buffer. This is constant for a
-            // given stream (depends on fe, Songcast buffers are 10mS)
-            bufframes = tsk->m_bytes / (tsk->m_chans * (tsk->m_bits/8));
+            bufframes = tsk->frames();
         }
-
+        
         // Computing the samplerate conversion factor. We want to keep
         // the queue at its target size to control the delay. The
         // present hack sort of works but could probably benefit from
@@ -380,15 +385,17 @@ static void *audioEater(void *cls)
         // Average the rate value to eliminate fast oscillations
         samplerate_ratio = filter(samplerate_ratio);
 
-        unsigned int tot_samples = tsk->m_bytes / (tsk->m_bits/8);
-        if ((unsigned int)src_data.input_frames < tot_samples / tsk->m_chans) {
-            int bytes = tot_samples * sizeof(float);
-            src_data.data_in = (float *)realloc(src_data.data_in, bytes);
-            src_data.data_out = (float *)realloc(src_data.data_out, 2 * bytes);
-            src_data.input_frames = tot_samples / tsk->m_chans;
-            // Available space for output
-            src_data.output_frames = 2 * src_data.input_frames;
+        unsigned int tot_samples = tsk->samples();
+        src_data.input_frames = tsk->frames();
+        size_t needed_bytes = tot_samples * sizeof(float);
+        if (src_input_bytes < needed_bytes) {
+            src_data.data_in = (float *)realloc(src_data.data_in, needed_bytes);
+            src_data.data_out = (float *)realloc(src_data.data_out,
+                                                 2 * needed_bytes);
+            src_data.output_frames = 2 * tot_samples / tsk->m_chans;
+            src_input_bytes = needed_bytes;
         }
+
         src_data.src_ratio = samplerate_ratio;
         src_data.end_of_input = 0;
         
@@ -453,10 +460,14 @@ static void *audioEater(void *cls)
             }
         }
 
+        // New number of samples after conversion. We are going to
+        // copy them back to the audio buffer, and may need to
+        // reallocate it.
         tot_samples =  src_data.output_frames_gen * tsk->m_chans;
-        if (src_data.output_frames_gen > src_data.input_frames) {
-            tsk->m_bytes = tot_samples * (tsk->m_bits / 8);
-            tsk->m_buf = (char *)realloc(tsk->m_buf, tsk->m_bytes);
+        needed_bytes = tot_samples * (tsk->m_bits / 8);
+        if (tsk->m_allocbytes < needed_bytes) {
+            tsk->m_allocbytes = needed_bytes;
+            tsk->m_buf = (char *)realloc(tsk->m_buf, tsk->m_allocbytes);
             if (!tsk->m_buf) {
                 LOGERR("audioEater:alsa: out of memory\n");
                 alsaqueue.setTerminateAndWait();

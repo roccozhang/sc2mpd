@@ -218,7 +218,7 @@ void OhmReceiverDriver::Observer::process(OhmMsgAudio& aMsg)
 
             if (bytes != aMsg.Audio().Bytes()) {
                 LOGERR("OhmRcvDrv::Process:audio: computed bytes " << bytes << 
-                       " !=  bufer's " << aMsg.Audio().Bytes() << endl);
+                       " !=  buffer's " << aMsg.Audio().Bytes() << endl);
                 bytes = aMsg.Audio().Bytes();
             }
             const unsigned char *icp = 
@@ -294,7 +294,9 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
     }
 
     unsigned int bytes = aMsg.Audio().Bytes();
-    char *buf = (char *)malloc(bytes);
+    // We allocate a bit more space to avoir reallocations in the resampler
+    unsigned int allocbytes = bytes + 100; 
+    char *buf = (char *)malloc(allocbytes);
     if (buf == 0) {
         LOGERR("OhmReceiverDriver::Process: can't allocate " << 
                bytes << " bytes\n");
@@ -328,7 +330,7 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
 
     AudioMessage *ap = new 
         AudioMessage(aMsg.BitDepth(), aMsg.Channels(), aMsg.Samples(),
-                     aMsg.SampleRate(), buf);
+                     aMsg.SampleRate(), buf, allocbytes);
 
     // There is nothing special we can do if put fails: no way to
     // return status. Should we just exit ?
@@ -340,20 +342,18 @@ void OhmReceiverDriver::Process(OhmMsgAudio& aMsg)
 
 void OhmReceiverDriver::Process(OhmMsgTrack& aMsg)
 {
-    LOGDEB("OhmRcvDrv::Process:trk: TRACK SEQ " << aMsg.Sequence() << endl);
     Brhz uri(aMsg.Uri());
-    LOGDEB("OhmRcvDrv::Process:trk: TRACK URI " << uri.CString() << endl);
     Brhz metadata(aMsg.Metadata());
-    LOGDEB("OhmRcvDrv::Process:trk: TRACK METADATA " << metadata.CString() 
-           << endl);
+    LOGDEB("OhmRcvDrv::Process:trk: TRACK SEQ " << aMsg.Sequence() <<
+           " URI " << uri.CString() <<
+           " METADATA " << metadata.CString() << endl);
 }
 
 void OhmReceiverDriver::Process(OhmMsgMetatext& aMsg)
 {
-    LOGDEB("OhmRcvDrv::Process:meta: METATEXT SEQUENCE " <<  aMsg.Sequence() 
-           << endl);
     Brhz metatext(aMsg.Metatext());
-    LOGDEB("OhmRcvDrv::Process:meta: METATEXT " << metatext.CString() << endl);
+    LOGDEB("OhmRcvDrv::Process:meta: METATEXT SEQUENCE " <<  aMsg.Sequence() <<
+           " METATEXT " << metatext.CString() << endl);
 }
 
 int CDECL main(int aArgc, char* aArgv[])

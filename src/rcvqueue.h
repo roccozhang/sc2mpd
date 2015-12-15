@@ -29,22 +29,28 @@ public:
     // If buf is not 0, it is a malloced buffer, and we take
     // ownership. The caller MUST NOT free it. Its size must be at
     // least (bits/8) * chans * samples
-    AudioMessage(unsigned int bits, unsigned int channels, unsigned int samples,
-                 unsigned int sampfreq, char *buf = 0) 
+    AudioMessage(unsigned int bits, unsigned int channels, unsigned int frames,
+                 unsigned int sampfreq, char *buf, unsigned int allocbytes) 
         : m_bits(bits), m_chans(channels), m_freq(sampfreq),
-          m_bytes(buf ? (bits/8) * channels * samples : 0), m_buf(buf),
-          m_curoffs(0) {
+          m_bytes(buf ? (bits/8) * channels * frames : 0),
+          m_allocbytes(allocbytes), m_buf(buf), m_curoffs(0) {
     }
 
     ~AudioMessage() {
         if (m_buf)
             free(m_buf);
     }
-
+    unsigned int samples() {
+        return m_bytes / (m_bits/8);
+    }
+    unsigned int frames() {
+        return samples() / m_chans;
+    }
     unsigned int m_bits;
     unsigned int m_chans;
     unsigned int m_freq;
-    unsigned int m_bytes;
+    unsigned int m_bytes; // Useful bytes
+    unsigned int m_allocbytes; // buffer size
     char *m_buf;
     unsigned int m_curoffs; /* Used by the http data emitter */
 };
