@@ -1,3 +1,10 @@
+sc2mpd (0.11.2-1) unstable; urgency=low
+
+  * Fix buffer management issue causing crashes with alternative Sender.
+  * Update openhome git versions
+  
+ -- Jean-Francois Dockes <jf@dockes.org>  Mon, 15 Dec 2015 18:44:00 +0200
+
 sc2mpd (0.11.1-1) unstable; urgency=low
 
   * Fix direct alsa playing for 24 bits incoming stream (from Mac).

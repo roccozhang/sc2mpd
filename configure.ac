@@ -1,4 +1,4 @@
-AC_INIT([sc2mpd], [0.11.1], [jf@dockes.org],
+AC_INIT([sc2mpd], [0.11.2], [jf@dockes.org],
              [sc2mpd], [http://www.lesbonscomptes.com/upmpdcli])
 AC_PREREQ([2.53])
 AC_CONFIG_SRCDIR([src/sc2mpd.cpp])
