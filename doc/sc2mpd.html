@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.7" />
+<meta name="generator" content="AsciiDoc 8.6.9" />
 <title>sc2mpd: helper for upmpdcli Songcast support</title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
@@ -87,9 +87,15 @@ ul, ol, li > p {
 ul > li     { color: #aaa; }
 ul > li > * { color: black; }
 
-pre {
+.monospaced, code, pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: inherit;
+  color: navy;
   padding: 0;
   margin: 0;
+}
+pre {
+  white-space: pre-wrap;
 }
 
 #author {
@@ -219,7 +225,7 @@ div.exampleblock > div.content {
 }
 
 div.imageblock div.content { padding-left: 0; }
-span.image img { border-style: none; }
+span.image img { border-style: none; vertical-align: text-bottom; }
 a.image:visited { color: white; }
 
 dl {
@@ -415,12 +421,6 @@ div.unbreakable { page-break-inside: avoid; }
  *
  * */
 
-tt {
-  font-family: "Courier New", Courier, monospace;
-  font-size: inherit;
-  color: navy;
-}
-
 div.tableblock {
   margin-top: 1.0em;
   margin-bottom: 1.5em;
@@ -453,12 +453,6 @@ div.tableblock > table[frame="vsides"] {
  * html5 specific
  *
  * */
-
-.monospaced {
-  font-family: "Courier New", Courier, monospace;
-  font-size: inherit;
-  color: navy;
-}
 
 table.tableblock {
   margin-top: 1.0em;
@@ -539,6 +533,8 @@ body.manpage div.sectionbody {
 @media print {
   body.manpage div#toc { display: none; }
 }
+
+
 </style>
 <script type="text/javascript">
 /*<![CDATA[*/
@@ -748,7 +744,11 @@ for the <strong>upmdcli</strong> UPnP MPD front-end. Specifically, it implements
 <div class="paragraph"><p>To use it, you need the
 <a href="http://www.linn.co.uk/software#songcast">Linn Songcast application</a>
 installed on a Microsoft Windows or Apple Mac OS X PC. See
-<a href="#whatis_songcast">further</a> for more explanations about what this does.</p></div>
+<a href="#whatis_songcast">further</a> for more explanations about what this does.
+Not all Songcast versions work well with upmpdcli. Lately I&#8217;ve had good
+luck with
+<a href="http://oss.linn.co.uk/Releases/Songcast/Davaar/Songcast_4.4.190_win.exe">4.4.190</a>
+but not with the 4.5 ones.</p></div>
 <div class="paragraph"><p>Warning: <strong>there is no software volume control</strong> of the Songcast Receivers
 for now: use either a local mixer or the little round things on the power
 amps. Set it low when experimenting !</p></div>
@@ -825,7 +825,7 @@ By directly using the <strong>alsa</strong> audio driver.
 </li>
 </ul></div>
 <div class="paragraph"><p>What approach is used is decided by a parameter in the upmpdcli
-configuration file: <tt>scplaymethod</tt> (see <a href="#Configuration">[Configuration]</a> further)</p></div>
+configuration file: <code>scplaymethod</code> (see <a href="#Configuration">[Configuration]</a> further)</p></div>
 <div class="paragraph"><p>Control:</p></div>
 <div class="ulist"><ul>
 <li>
@@ -850,12 +850,12 @@ The <strong>Songcast</strong> application on the desktop finds out about the
 </li>
 <li>
 <p>
-If the <em><tt>mpd</tt></em> method is in use, <strong>upmpdcli</strong> instructs <strong>mpd</strong> to play the
+If the <em><code>mpd</code></em> method is in use, <strong>upmpdcli</strong> instructs <strong>mpd</strong> to play the
   URL for the <strong>sc2mpd</strong> output.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>When using <em><tt>mpd</tt></em> more bufferisation occurs and there may be a significant
+<div class="paragraph"><p>When using <em><code>mpd</code></em> more bufferisation occurs and there may be a significant
 delay (up to around 10S) between the time when Songcast is activated and
 the time sound appears.</p></div>
 <div class="dlist"><dl>
@@ -864,8 +864,8 @@ NOTE
 </dt>
 <dd>
 <p>
-When using <em><tt>mpd</tt></em>, from a Mac (24 bits audio) you need <strong>mpd 0.19</strong>,
-configured with <tt>--disable-audiofile</tt>, else you risk producing high volume
+When using <em><code>mpd</code></em>, from a Mac (24 bits audio) you need <strong>mpd 0.19</strong>,
+configured with <code>--disable-audiofile</code>, else you risk producing high volume
 noise.  As Debian and Ubuntu tend to lag quite bit on MPD progresses, I
 have set up <a href="downloads.html#mpd">backport repositories</a> for
 appropriately configured recent mpd versions (currently 0.19.9), for
@@ -874,8 +874,8 @@ Ubuntu, Debian i386/amd64 and Raspbian.
 </dd>
 </dl></div>
 <div class="paragraph"><p>Given the bufferisation and delay control issues when going through MPD,
-only the <em><tt>alsa</tt></em> method is usable in multi-room configurations. Even with a
-single player, the <em><tt>mpd</tt></em> method will experience skips from time to
+only the <em><code>alsa</code></em> method is usable in multi-room configurations. Even with a
+single player, the <em><code>mpd</code></em> method will experience skips from time to
 time. The reasons are explained in the <a href="scmulti.html">multi-room</a>
 page.</p></div>
 </div>
@@ -887,18 +887,18 @@ page.</p></div>
 <div class="paragraph"><p>So add the repositories:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>echo deb http://www.lesbonscomptes.com/upmpdcli/downloads/debian/ unstable main | sudo tee /etc/apt/sources.list.d/upmpdcli.list
+<pre><code>echo deb http://www.lesbonscomptes.com/upmpdcli/downloads/debian/ unstable main | sudo tee /etc/apt/sources.list.d/upmpdcli.list
 echo deb-src http://www.lesbonscomptes.com/upmpdcli/downloads/debian/ unstable main | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list
 echo deb http://www.lesbonscomptes.com/upmpdcli/downloads/mpd-debian/ unstable main  | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list
-echo deb-src http://www.lesbonscomptes.com/upmpdcli/downloads/mpd-debian/ unstable main  | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list</tt></pre>
+echo deb-src http://www.lesbonscomptes.com/upmpdcli/downloads/mpd-debian/ unstable main  | sudo tee -a /etc/apt/sources.list.d/upmpdcli.list</code></pre>
 </div></div>
 <div class="paragraph"><p>Install (the mpd and libupnp versions in the repo have bug fixes):</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>sudo apt-get update
-sudo apt-get install upmpdcli sc2mpd mpd libupnp6</tt></pre>
+<pre><code>sudo apt-get update
+sudo apt-get install upmpdcli sc2mpd mpd libupnp6</code></pre>
 </div></div>
-<div class="paragraph"><p>And seed the next section for configuring.</p></div>
+<div class="paragraph"><p>And see the next section for configuring.</p></div>
 </div>
 </div>
 <div class="sect1">
@@ -910,7 +910,7 @@ sudo apt-get install upmpdcli sc2mpd mpd libupnp6</tt></pre>
 <strong>upmpdcli</strong> will advertise the Songcast capability, and any host with a
 Songcast sender installed should be able to use it.</p></div>
 <div class="paragraph"><p>However, you can set a number of values in the upmpdcli configuration file
-(you <strong>must</strong> set the <strong>upmpdcli</strong> <tt>-c</tt> option for <strong>sc2mpd</strong> to see them, the
+(you <strong>must</strong> set the <strong>upmpdcli</strong> <code>-c</code> option for <strong>sc2mpd</strong> to see them, the
 environment variable will not work):</p></div>
 <div class="dlist"><dl>
 <dt class="hdlist1">
@@ -918,7 +918,7 @@ sclogfilename
 </dt>
 <dd>
 <p>
-Name of the file which will receive <strong>sc2mpd</strong> log messages. <tt>stderr</tt> by
+Name of the file which will receive <strong>sc2mpd</strong> log messages. <code>stderr</code> by
 default. This <em>can&#8217;t be</em> the same file used by <strong>upmpdcli</strong>.
 </p>
 </dd>
@@ -936,7 +936,7 @@ scplaymethod
 <dd>
 <p>
 Used by <strong>upmpdcli</strong> and <strong>sc2mpd</strong>.  This decides how audio is played, with 2
-possible values, <em><tt>alsa</tt></em> or <em><tt>mpd</tt></em>. Using <em><tt>mpd</tt></em> is somewhat easier, but
+possible values, <em><code>alsa</code></em> or <em><code>mpd</code></em>. Using <em><code>mpd</code></em> is somewhat easier, but
 unusable in <a href="scmulti.html">multi-room</a> configurations, and you risk
 small drops even in single-player settings.
 </p>
@@ -946,10 +946,10 @@ scalsadevice
 </dt>
 <dd>
 <p>
-If the <em><tt>alsa</tt></em> method is set, the <tt>scalsadevice</tt>
-parameter defines the interface name. Use <tt>aplay -L</tt> to find the
-appropriate name. Also check that user <em><tt>upmpdcli</tt></em> belongs to the
-<em><tt>audio</tt></em> group.
+If the <em><code>alsa</code></em> method is set, the <code>scalsadevice</code>
+parameter defines the interface name. Use <code>aplay -L</code> to find the
+appropriate name. Also check that user <em><code>upmpdcli</code></em> belongs to the
+<em><code>audio</code></em> group.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -957,7 +957,7 @@ sccvttype
 </dt>
 <dd>
 <p>
-If the <em><tt>alsa</tt></em> play method is used, this defines the libsamplerate
+If the <em><code>alsa</code></em> play method is used, this defines the libsamplerate
 converter type. See <a href="http://www.mega-nerd.com/SRC/api_misc.html#Converters">http://www.mega-nerd.com/SRC/api_misc.html#Converters</a>.
 The default is to use SRC_CVT_FASTEST, resulting in around 24% CPU usage
 for sc2mpd processing a 16 bits stream on a Raspberry Pi 1. The value can
@@ -969,9 +969,9 @@ schttpport
 </dt>
 <dd>
 <p>
-If the <em><tt>mpd</tt></em> method is set, this defines the HTTP port used by <strong>mpd</strong> to
+If the <em><code>mpd</code></em> method is set, this defines the HTTP port used by <strong>mpd</strong> to
 connect to <strong>sc2mpd</strong>. 8768 by default. This must be an available port on
-<tt>localhost</tt>, and it will only accept connections from <tt>localhost</tt>.
+<code>localhost</code>, and it will only accept connections from <code>localhost</code>.
 </p>
 </dd>
 <dt class="hdlist1">
@@ -980,9 +980,9 @@ sc2mpd
 <dd>
 <p>
 Used by <strong>upmpdcli</strong>. Path for the <strong>sc2mpd</strong> executable file
-(e.g. <tt>/usr/local/bin/sc2mpd</tt>). Only useful if <strong>sc2mpd</strong> was not installed
+(e.g. <code>/usr/local/bin/sc2mpd</code>). Only useful if <strong>sc2mpd</strong> was not installed
 to a location in the executable $PATH set for the init scripts. Typically
-only <tt>/bin</tt> and <tt>/usr/bin</tt> are in there. This allows <strong>upmpdcli</strong> to find
+only <code>/bin</code> and <code>/usr/bin</code> are in there. This allows <strong>upmpdcli</strong> to find
 <strong>sc2mpd</strong> if it is not in the standard location.
 </p>
 </dd>
@@ -990,6 +990,10 @@ only <tt>/bin</tt> and <tt>/usr/bin</tt> are in there. This allows <strong>upmpd
 </div>
 <div class="sect2">
 <h3 id="_on_the_sender_windows_mac_side">On the Sender (Windows/Mac) side</h3>
+<div class="paragraph"><p>Not all versions of Songcast work well with sc2mpd. Lately, I have had good
+luck with 4.4.190, but not 4.5.298. You will find
+<a href="http://oss.linn.co.uk/Releases/Songcast/Davaar/">all the Songcast installers
+here</a></p></div>
 <div class="paragraph"><p>I could not get IP multicast to work with WIFI Receivers (the sound drops
 constantly).</p></div>
 <div class="paragraph"><p>There are well-known problems with multicast and WIFI (see for example
@@ -1053,9 +1057,9 @@ source comes with an <em>ohbuild.sh</em> script which will try to clone the
 Openhome Git repositories and build the libs:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>cd sc2mpd
+<pre><code>cd sc2mpd
 mkdir /my/place/for/openhome
-sh ohbuild.sh /my/place/for/openhome</tt></pre>
+sh ohbuild.sh /my/place/for/openhome</code></pre>
 </div></div>
 <div class="paragraph"><p>Miscellaneous error messages will be displayed during the build. Hope for
 the best&#8230;</p></div>
@@ -1063,10 +1067,10 @@ the best&#8230;</p></div>
 <em>sc2mpd</em> directory:</p></div>
 <div class="literalblock">
 <div class="content">
-<pre><tt>sh autogen.sh
+<pre><code>sh autogen.sh
 ./configure --prefix=/usr --with-openhome=/my/place/for/openhome
 make
-sudo make install</tt></pre>
+sudo make install</code></pre>
 </div></div>
 <div class="paragraph"><p>The build uses static Openhome libraries, so you can move the executable to
 another machine without needing the Openhome directory (don&#8217;t forget to
@@ -1088,7 +1092,8 @@ suspect.</p></div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2015-07-27 10:46:37 CEST
+Last updated
+ 2015-11-15 19:36:12 CET
 </div>
 </div>
 </body>

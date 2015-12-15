@@ -8,6 +8,10 @@ To use it, you need the
 link:http://www.linn.co.uk/software#songcast[Linn Songcast application] 
 installed on a Microsoft Windows or Apple Mac OS X PC. See
 xref:whatis_songcast[further] for more explanations about what this does.
+Not all Songcast versions work well with upmpdcli. Lately I've had good
+luck with
+http://oss.linn.co.uk/Releases/Songcast/Davaar/Songcast_4.4.190_win.exe[4.4.190]
+but not with the 4.5 ones.
 
 Warning: *there is no software volume control* of the Songcast Receivers
 for now: use either a local mixer or the little round things on the power
@@ -173,6 +177,11 @@ only `/bin` and `/usr/bin` are in there. This allows *upmpdcli* to find
 *sc2mpd* if it is not in the standard location.
 
 === On the Sender (Windows/Mac) side
+
+Not all versions of Songcast work well with sc2mpd. Lately, I have had good
+luck with 4.4.190, but not 4.5.298. You will find
+http://oss.linn.co.uk/Releases/Songcast/Davaar/[all the Songcast installers
+here]
 
 I could not get IP multicast to work with WIFI Receivers (the sound drops
 constantly).
