@@ -47,12 +47,16 @@ using namespace std;
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
 #endif
 
-// The queue for audio blocks ready for alsa
-static const unsigned int qs = 100;
-// Queue size target including alsa buffers. 
-static const unsigned int qstarg = qs/2;
+// The queue for audio blocks ready for alsa. This is the maximum size
+// before enqueuing blocks
+static const unsigned int qs_hi = 100;
 
-static WorkQueue<AudioMessage*> alsaqueue("alsaqueue", qs);
+// Queue size target including alsa buffers. There is no particular
+// reason for the qs_hi/2 value. We could try something lower to
+// minimize latency
+static const unsigned int qstarg = qs_hi/2;
+
+static WorkQueue<AudioMessage*> alsaqueue("alsaqueue", qs_hi);
 
 /* This is used to disable sample rate conversion until playing is actually 
    started */
