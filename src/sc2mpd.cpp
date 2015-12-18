@@ -249,7 +249,7 @@ void OhmReceiverDriver::Observer::process(OhmMsgAudio& aMsg)
     } else {
         if (aMsg.Frame() != iFrame + 1) {
             LOGINF("Missed frames between " << iFrame << " and " << 
-                    aMsg.Frame());
+                   aMsg.Frame() << endl);
         }
         iFrame = aMsg.Frame();
     }

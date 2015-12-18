@@ -26,6 +26,12 @@ NOTE: you know what Songcast is and have a Rasberry PI which wants to play:
 xref:rpi_quick[quick install for the Raspberry PI]  (also works for i386
 and amd64 Debian Wheezy).
 
+NOTE: this does not work too well on Raspberry Pis using an USB DAC (YMMV
+of course). As far as I can see the data rate of the uncompressed stream is
+just too much for the poor Pi Ethernet/USB chip. Things work just fine with
+an I2S DAC (or on HDMI I suppose).
+
+
 [[whatis_songcast]]
 == What is Linn Songcast
 
