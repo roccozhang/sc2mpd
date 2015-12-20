@@ -63,7 +63,20 @@ static WorkQueue<AudioMessage*> alsaqueue("alsaqueue", qs_hi);
 static bool qinit = false;
 
 static snd_pcm_t *pcm;
-/* These may be changed depending on local alsa caps */
+
+// A period is data processed between interrupts. When playing,
+// there is one period belonging to the hardware and normally
+// others that the software can fill up. The minimum reasonable is
+// 2 periods (one for us, one for the hardware), which we try to
+// use as this gives minimum latency while being workable. But we
+// have to accept that the driver may have other constraints.  Not
+// too sure why we bother actually, because we don't use the
+// resulting config at all while writing...
+// In any case, if we get what we ask for, we have an in-driver
+// latency of between 16KBytes and 32KBytes, 4K to 8K frames (16:2),
+// 200mS at 44.1 Khz
+//
+// These may be changed depending on local alsa caps:
 static snd_pcm_uframes_t periodsize = 16384; /* Periodsize (bytes) */
 static unsigned int periods = 2;       /* Number of periods */
 

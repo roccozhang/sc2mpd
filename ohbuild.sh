@@ -179,8 +179,7 @@ build_ohSongcast()
     # Aug 19 2015
     git checkout fe9b8a80080118f3bff9b44328975d10bc2c230b || exit 1
 
-    make release=1 Receiver
-    # make release=1 WavSender
+    make release=1 Receiver WavSender
 }
 
 official_way()
