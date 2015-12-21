@@ -1,0 +1,186 @@
+#!/usr/bin/env python
+# Copyright (C) 2015 J.F.Dockes
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the
+#   Free Software Foundation, Inc.,
+#   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+#
+from __future__ import print_function
+
+# Auxiliary script for the Unix Songcast mpd-based sender: we create
+# an mpd process which writes to a fifo only, and an uxsender process
+# (Songcast sender) which reads from the fifo
+#
+# The MPD process is in turn controlled from the upmpdcli process
+# which initiated the whole thing, which will normally stop the
+# current mpd playing (can't use it: the audio would not be in sync
+# with the Songcast one), copy the current playlist to the new mpd,
+# and start a local Receiver for playing. Other Receivers can then
+# connect to the Sender to achieve multiroom synchronized play
+
+import tempfile
+import time
+import subprocess
+import os
+import sys
+import uuid
+import getopt
+import signal
+import socket
+
+uxsender = "mpd2sc"
+def usage(f):
+    print("Usage: scmakempdsender.py [-u] [-p mpdport] [", file=f)
+    sys.exit(1)
+    
+upmpdclitoo = False
+mpdport = 6700
+# Upmpdcli friendly-name. Used to compute a Uuid in conjunction with
+# the node name
+upmpdcli_fname = "UpMpd"
+
+args = sys.argv[1:]
+opts, args = getopt.getopt(args, "hup:f:")
+for opt, arg in opts:
+    if opt in ['-h']:
+        usage(sys.stdout)
+    elif opt in ['-f']:
+        upmpdcli_fname = arg
+    elif opt in ['-p']:
+        mpdport = int(arg)
+    elif opt in ['-u']:
+        upmpdclitoo = True
+    else:
+        print("unknown option %s\n"%opt, file=sys.stderr)
+        usage(sys.stderr)
+
+# Temp fifo name and temporary file for mpd configuration
+mpdfifo = tempfile.mktemp(suffix=".fifo")
+mpdconf = tempfile.NamedTemporaryFile()
+
+# UDN and name for the Sender UPnP device. We use a hash of the
+# friendly name and host name
+sender_udn = uuid.uuid5(uuid.NAMESPACE_DNS,
+                        socket.gethostname() + upmpdcli_fname).urn
+sender_name = "%s UxSender" % upmpdcli_fname
+
+mpdproc = None
+senderproc = None
+upmpdproc = None
+
+def cleanup(xval):
+    # Clean up
+    try:
+        senderproc.terminate()
+    except:
+        pass
+    try:
+        mpdproc.terminate()
+    except:
+        pass
+    try:
+        upmpdproc.terminate()
+    except:
+        pass
+    # MPD normally deletes the fifo. Just in case
+    try:
+        os.remove(mpdfifo)
+    except:
+        pass
+    try:
+        os.remove(mpdconf.name)
+    except:
+        pass
+    sys.exit(xval)
+
+def sighandler(signum, frame):
+    cleanup(1)
+
+signal.signal(signal.SIGINT, sighandler)
+signal.signal(signal.SIGTERM, sighandler)
+
+# MPD configuration in temporary file
+mpdconf_template='''
+bind_to_address	 "localhost"
+port		 "%d"
+zeroconf_enabled "no"
+input {
+    plugin "curl"
+}
+audio_output {
+    type    "fifo"
+    name    "FIFO"
+    path    "%s"
+    format  "44100:16:2"
+}
+mixer_type  "software"
+'''
+print(mpdconf_template % (mpdport, mpdfifo), file = mpdconf)
+mpdconf.flush()
+
+
+# Start mpd
+try:
+    mpdproc = subprocess.Popen(["mpd", "--no-daemon", "--stderr", mpdconf.name],
+                               bufsize = -1)
+except Exception as err:
+    print("Can't start mpd: %s"%(err,), file=sys.stderr)
+    cleanup(1)
+
+# Wait for the fifo to appear
+while True:
+    if os.path.exists(mpdfifo):
+        break
+    if mpdproc.poll() is not None:
+        sys.exit(1)
+    time.sleep(0.1)
+
+# Start the Sender
+try:
+    senderproc = subprocess.Popen([uxsender, "-f", mpdfifo,
+                                   "-A", "44100:16:2:1",
+                                   "-u", sender_udn, "-n", sender_name],
+                                  stdout=subprocess.PIPE,
+                                  bufsize = -1)
+except Exception as err:
+    print("Can't start %s: %s"%(uxsender, err), file=sys.stderr)
+    cleanup(1)
+
+# Get the Uri and Metadata values from the sender. These get written to stdout
+urimeta = senderproc.stdout.readline()
+
+# Optionally also start an upmpdcli to control the mpd. Not normally
+# used (becaue the upmpdcli which is switching to sender mode would do
+# it) but handy when developping
+if upmpdclitoo:
+    upname = "upmpdcli-sender-%d"% os.getpid()
+    try:
+        upmpdproc = subprocess.Popen(["upmpdcli", "-c", "", "-h", "localhost",
+                                      "-p", "%d"%mpdport,
+                                      "-f", upname], bufsize = -1)
+    except Exception as err:
+        print("Can't start upmpdcli: %s"%(err,), file=sys.stderr)
+        cleanup(1)
+
+# Tell the world we're set
+print("Ok %d %s" % (mpdport, urimeta))
+sys.stdout.flush()
+
+# Wait for either process. 
+while True:
+    if mpdproc.poll() is not None or senderproc.poll() is not None:
+        break
+    time.sleep(0.5)
+
+time.sleep(1)
+cleanup(0)

@@ -71,6 +71,7 @@ struct ReadContext {
     long long baseoffset;
 };
 
+#ifdef PRINT_KEYS
 static const char *ValueKindToCp(enum MHD_ValueKind kind)
 {
     switch (kind) {
@@ -84,7 +85,6 @@ static const char *ValueKindToCp(enum MHD_ValueKind kind)
     }
 }
 
-#ifdef PRINT_KEYS
 static int print_out_key (void *cls, enum MHD_ValueKind kind, 
                           const char *key, const char *value)
 {
