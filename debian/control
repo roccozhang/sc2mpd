@@ -2,15 +2,19 @@ Source: sc2mpd
 Section: contrib/sound
 Priority: extra
 Maintainer: Jean-Francois Dockes <jf@dockes.org>
-Build-Depends: debhelper (>= 8.0.0), autotools-dev, libmicrohttpd-dev, 
-               hardening-wrapper
-Standards-Version: 3.9.3
+Build-Depends: debhelper (>= 8.0.0), autotools-dev,
+               libmicrohttpd-dev, libsamplerate0-dev, libasound2-dev,
+               hardening-wrapper, git, rsync, python, patch, 
+Standards-Version: 3.9.5
 Homepage: http://www.lesbonscomptes.com/upmpdcli
 
 Package: sc2mpd
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, upmpdcli (>= 0.9.0)
+Depends: ${shlibs:Depends}, ${misc:Depends}, upmpdcli (>= 0.9.0), python
 Description: Gateway forwarding a Linn Songcast audio stream to MPD
  sc2mpd is designed to work with upmpdcli, with which it provides a Songcast
  Receiver interface usable from any Songcast Sender such as the
  Windows or Mac OS X Linn Songcast applications.
+ The package also now contains a reverse gateway, mpd2sc, forwarding audio
+ played by mpd to a Songcast Sender, mostly useful for multiroom
+ synchronized play. 

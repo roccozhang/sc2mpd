@@ -19,6 +19,8 @@ usage()
 test $# = 1 || usage
 topdir=$1
 
+test -d $topdir || mkdir $topdir || fatal "Can't create $topdir"
+
 cd $topdir || exit 1
 topdir=`pwd`
 

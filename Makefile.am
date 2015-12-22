@@ -61,16 +61,25 @@ OTHEROMP2 = $(TOPSCO)/Ohm.o $(TOPSCO)/OhmMsg.o $(TOPSCO)/OhmSocket.o \
              $(TOPSCO)/OhmSender.o \
              $(TOPOH)ohNetGenerated/$(OBJIPATH)DvAvOpenhomeOrgSender1.o
 
-mpd2sc_CPPFLAGS = -I$(srcdir)/sc2src $(AM_CPPFLAGS) 
 mpd2sc_LDADD = $(OTHEROMP2) $(TOPOH)ohNet/$(OBJIPATH)libohNetCore.a \
      $(TOPOH)ohNet/$(OBJIPATH)libTestFramework.a $(OTHERLIBS)
 
+mpd2sc_CPPFLAGS = -I$(top_srcdir)/sc2src $(AM_CPPFLAGS)
 mpd2sc_SOURCES = \
+     mpd2src/audioreader.h \
+     mpd2src/audioutil.h \
      mpd2src/base64.cxx \
+     mpd2src/base64.hxx \
      mpd2src/fiforeader.cpp \
-     mpd2src/openaudio.cpp \
-     mpd2src/stringtotokens.cpp \
+     mpd2src/fiforeader.h \
+     mpd2src/icon.h \
      mpd2src/mpd2sc.cpp \
+     mpd2src/openaudio.cpp \
+     mpd2src/openaudio.h \
+     mpd2src/stringtotokens.cpp \
+     mpd2src/stringtotokens.h \
      mpd2src/wavreader.cpp \
+     mpd2src/wavreader.h \
      sc2src/log.cpp
      
+dist_bin_SCRIPTS = mpd2src/scmakempdsender
