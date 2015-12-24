@@ -83,3 +83,7 @@ mpd2sc_SOURCES = \
      sc2src/log.cpp
      
 dist_bin_SCRIPTS = mpd2src/scmakempdsender
+
+dist-hook:
+	test -z "`git status -s | grep -v sc2mpd-$(VERSION)`"
+	git tag -f -a sc2mpd-v$(VERSION) -m 'version $(VERSION)'
