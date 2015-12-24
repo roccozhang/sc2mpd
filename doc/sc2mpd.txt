@@ -206,6 +206,10 @@ Under most conditions, WIFI data rates should be more than sufficient to
 transport Songcast streams (a bit over 1 Mbit/S for 48k/24bits, 700 Kbits/S
 for 44.1k/16 bits).
 
+However, Songcast is probably best transported over a wired connection. If
+you are doing this over WIFI and experiencing glitches, the wireless is the
+first suspect.
+
 == Building sc2mpd
 
 There are two parts in building *sc2mpd*:
@@ -218,6 +222,37 @@ link:http://www.lesbonscomptes.com/upmpdcli/downloads.html[*sc2mpd*
 release] or clone the *sc2mpd*
 link:http://www.github.com/medoc92/sc2mpd[Github repository]. 
 
+
+=== Building the OpenHome libraries
+
+Building the Openhome libraries is a bit of a black art for a number of
+understandable reasons:
+
+- There are no released distributions for the OpenHome libraries, but
+  only a number of git repositories for the different components. The state
+  of the repositories is not completely consistent at all times (there will
+  be moments when a component will not build with another).
+- The OpenHome build system is very complicated because it works on
+  multiple platforms and multiple language bindings.
+
+The *sc2mpd* source comes with a shell script named _ohbuild.sh_ to help
+with this. It has several functions:
+ - Cloning the OpenHome and checking out verified revisions
+ - Applying a few minor patches to ensure that the build will work in a
+   simplified environment (e.g. without a c# compiler).
+ - Creating a tar file of a compact trimmed tree.
+ - Running the build either from the cloned tree or the tar file.
+
+The tar functions are mostly useful to help with building packages. For a
+normal build, the procedure would be as follows:
+
+    cd sc2mpd
+    mkdir /my/place/for/openhome
+    sh ohbuild.sh -b /my/place/for/openhome
+
+
+=== Building sc2mpd
+
 *sc2mpd* depends on a number of libraries:
 
 - The link:http://www.gnu.org/software/libmicrohttpd/[microhttpd]
@@ -228,19 +263,8 @@ link:http://www.github.com/medoc92/sc2mpd[Github repository].
   library. _libsamplerate0_ on debian-derived systems.
 - The *libasound* Alsa interface library (_libasound2_).
 
-Building the Openhome libraries is a bit of a black art, and the *sc2mpd*
-source comes with an _ohbuild.sh_ script which will try to clone the
-Openhome Git repositories and build the libs:
-
-    cd sc2mpd
-    mkdir /my/place/for/openhome
-    sh ohbuild.sh /my/place/for/openhome
-
-Miscellaneous error messages will be displayed during the build. Hope for
-the best...
-
-
-When this is done, build *sc2mpd*, using the following commands inside the
+Once OpenHome is built and the auxiliary library development packages are
+installed, build *sc2mpd*, using the following commands inside the
 _sc2mpd_ directory:
 
     sh autogen.sh
@@ -256,8 +280,3 @@ though).
 After restarting *upmpdcli*, it should advertise the _Receiver_ service and
 appear in the Songcast Sender menus.
 
-== Miscellaneous remarks
-
-Songcast is probably best transported over a wired connection. If you are
-doing this over WIFI and experiencing glitches, the wireless is the first
-suspect.
