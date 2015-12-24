@@ -17,5 +17,5 @@ OPENHOME=openhome
 	dh $@
 
 override_dh_auto_configure:
-	test ! -d $(OPENHOME) && sh ./ohbuild.sh $(OPENHOME)
+	sh ./ohbuild.sh $(OPENHOME)
 	dh_auto_configure -- --with-openhome=$(OPENHOME)

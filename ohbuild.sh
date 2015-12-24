@@ -1,38 +1,94 @@
 #!/bin/sh
 
 # Helper script for building the openhome libs prior to building
-# scmpdcli.  This is far from foolproof or knowledgeable, but it seems
-# to get me usable (static) libs. We first clone the git repositories,
-# checkout a known ok version (it's more or less random, based on the
-# 1st date I tried this, but some further versions don't build), then
-# build th edifferent dirs.
-# You should create a top empty dir first, then "sh ohbuild.sh mytopdir"
+# sc2mpd and mpd2sc.
+#
+# Read about Openhome ohNet here: http://www.openhome.org/wiki/OhNet
+#
+# The source code we process is:
+#    Copyright 2011-14, Linn Products Ltd. All rights reserved.
+# See the license files under the different subdirs. In a nutshell: BSD
+#
+# This is far from foolproof or knowledgeable, but it seems to get me
+# usable (static) libs.
+# There are 3 modes of operation:
+#   -c: clone, adjust, trim the source directories and produce a tar file
+#   -b: clone, adjust the source dirs and build
+#   -t: extract tar file and build.
+#
+# When cloning, we checkout a known ok version (it's more or less
+# random, based on the last date I tried this, sometimes more recent
+# versions don't build versions don't build), then build the different
+# dirs.
+#
+# When producing the tar file, we get rid of the .git directory and a
+# bunch of other things to reduce the size
+
 
 fatal()
 {
     echo $*; exit 1
 }
+
 usage()
 {
-    fatal "Usage: ohbuild.sh <topdir>"
+    echo "Usage:"
+    echo "ohbuild.sh -c <topdir> : clone and adjust openhome directories"
+    echo " from the git repositories, and produce tar file in /tmp"
+    echo "ohbuild.sh -t <tarfile> <topdir> : extract tar file in top dir and"
+    echo "  build openhome in there"
+    echo "ohbuild.sh -b <topdir> : clone and build, no cleaning up of unused"
+    echo "  files, no tar file"
+    echo "ohbuild.sh <topdir> : just build, don't change the tree"
+    exit 1
 }
-test $# = 1 || usage
+
+opt_t=0
+opt_c=0
+opt_b=0
+tarfile=''
+
+opts=`getopt -n ohbuild.sh -o t:cb -- "$@"`
+eval set -- "$opts"
+
+while true ; do
+    case "$1" in
+        -t) opt_t=1; tarfile=$2 ; shift 2 ;;
+        -b) opt_b=1; shift ;;
+        -c) opt_c=1; shift ;;
+        --) shift ; break ;;
+        *) echo "Internal error!" ; exit 1 ;;
+    esac
+done
+
+echo opt_t $opt_t
+echo opt_c $opt_c
+echo opt_b $opt_b
+echo tarfile $tarfile
+
+test $# -eq 1 || usage
 topdir=$1
+echo topdir $topdir
 
-test -d $topdir || mkdir $topdir || fatal "Can't create $topdir"
-
-cd $topdir || exit 1
-topdir=`pwd`
-
-
-otherfiles=`echo *.*`
-test "$otherfiles"  != '*.*' && fatal not in top dir
+# Only one of -tcb
+tot=`expr $opt_t + $opt_c + $opt_b`
+test $tot -le 1 || usage
 
 arch=
 debug=
 
+test -d $topdir || mkdir $topdir || fatal "Can't create $topdir"
+
+cd $topdir || exit 1
+# Make topdir an absolute path
+topdir=`pwd`
+
+otherfiles=`echo *.*`
+test "$otherfiles"  != '*.*' && fatal topdir should not contain files
+
 clone_oh()
 {
+    echo "Cloning OpenHome from git repos into $topdir"
     cd $topdir
     for rep in \
         https://github.com/openhome/ohNet.git \
@@ -46,14 +102,9 @@ clone_oh()
         echo $dir
         test ! -d $dir && git clone $rep
     done
-}
 
-build_ohNet()
-{
-    cd $topdir
-    dir=ohNet
-    echo building $dir
-    cd  $dir
+
+    cd $topdir/ohNet
     # Nov 30 2015. Commits from early december broke ohNetGenerated
     git checkout 0e22566e3da0eb9b40f4183e76254c6f2a3c2909 || exit 1
 
@@ -79,16 +130,7 @@ index 7c0dae8..ddc4477 100644
  
 EOF
 
-    make native_only=yes || exit 1
-
-    cd ..
-}
-
-build_ohNetGenerated()
-{
-    dir=ohNetGenerated
-    echo building $dir
-    cd  $dir
+    cd  $topdir/ohNetGenerated
     # Jul 30 2015
     git checkout 92294ce514dbe38fa569fce8b58588f40bf09cdb || exit 1
     git checkout Makefile
@@ -107,6 +149,61 @@ index a7b84e3..9c335f8 100644
 
 EOF
 
+    cd  $topdir/ohdevtools
+    # Dec 9 2015
+    git checkout 77f4f971e2c62e84a7eab2a1bcf4aa3dc3590840 || exit 1
+   
+    cd  $topdir/ohTopology
+    # Mar 17 2015
+    git checkout 18f004621a7b0dc3add6ddfeec781bd3878ae42e || exit 1
+
+    cd  $topdir/ohSongcast
+    # Aug 19 2015
+    git checkout fe9b8a80080118f3bff9b44328975d10bc2c230b || exit 1
+}
+
+make_tarfile()
+{
+    cd $topdir || exit 1
+    
+    # Make space: get rid of the .git and other not useful data, then
+    # produce a tar file for reproduction
+    for dir in ohNet ohNetGenerated ohdevtools ohTopology ohSongcast;do
+        test -d $dir || fatal no "'$dir'" in "'$topdir'"
+        rm -rf $topdir/$dir/.git
+    done
+    rm -rf $topdir/ohNet/thirdparty
+    rm -rf $topdir/ohNetGenerated/OpenHome/Net/Bindings/Cs
+    rm -rf $topdir/ohNetGenerated/OpenHome/Net/Bindings/Java
+    rm -rf $topdir/ohNetGenerated/OpenHome/Net/Bindings/Js
+    rm -rf $topdir/ohNetGenerated/OpenHome/Net/T4/
+    rm -rf $topdir/ohSongcast/Docs/
+    rm -rf $topdir/ohSongcast/ohSongcast/Mac
+    rm -rf $topdir/ohSongcast/ohSongcast/Windows
+    rm -rf $topdir/ohTopology/waf
+    rm -rf $topdir/ohdevtools/nuget
+    
+    dt=`date +%Y%m%d`
+    tar czf $tarfile/tmp/openhome-sc2-${dt}.tar.gz .
+}
+
+build_ohNet()
+{
+    dir=ohNet
+    echo;echo building $dir
+    cd  $topdir/$dir || exit 1
+
+    make native_only=yes || exit 1
+
+    cd ..
+}
+
+build_ohNetGenerated()
+{
+    dir=ohNetGenerated
+    echo;echo building $dir
+    cd  $topdir/$dir || exit 1
+
     # e.g. Linux-x64, Linux-armhf
     arch=`basename $topdir/ohNet/Build/Bundles/ohNet-*-*.tar.gz | \
         sed -e s/ohNet-//  -e s/-[A-Z][a-z][a-z]*\.tar\.gz$//`
@@ -120,27 +217,28 @@ EOF
         tar xvzf $topdir/ohNet/Build/Bundles/ohNet-${arch}-${debug}.tar.gz
     ) || exit 1
 
+    # Create bogus files for unused Makefile dependencies which we don't
+    # carry in the tar file.
+    mkdir -p OpenHome/Net/Service/ OpenHome/Net/T4/Templates/
+    touch OpenHome/Net/Service/Services.xml \
+          OpenHome/Net/T4/Templates/UpnpMakeT4.tt \
+          OpenHome/Net/T4/Templates/CpUpnpMakeProxies.tt \
+          OpenHome/Net/T4/Templates/DvUpnpMakeDevices.tt
 
     make native_only=yes
 
     # Copy the includes from here to the ohNet dir where ohTopology
     # will want them
     tar cf - Build/Include | (cd $topdir/ohNet/;tar xvf -) || exit 1
-
-    cd ..
 }
 
 build_ohdevtools()
 {
-    cd $topdir
     dir=ohdevtools
-    echo building $dir
-    cd  $dir
+    echo;echo building $dir
+    cd  $topdir/$dir || exit 1
 
-    # Dec 9 2015
-    git checkout 77f4f971e2c62e84a7eab2a1bcf4aa3dc3590840 || exit 1
     # Nothing to build
-    cd ..
 }
 
 
@@ -149,14 +247,10 @@ build_ohdevtools()
 # needed (or at least used) though.
 build_ohTopology()
 {
-    cd $topdir
     dir=ohTopology
-    echo building $dir
-    cd  $dir
+    echo;echo building $dir
+    cd  $topdir/$dir || exit 1
 
-    # Mar 17 2015
-    git checkout 18f004621a7b0dc3add6ddfeec781bd3878ae42e || exit 1
-	
     #./go fetch --all --clean 
     #./waf configure --ohnet=../ohNet --dest-platform=Linux-x86
 
@@ -167,19 +261,13 @@ build_ohTopology()
 
     mkdir -p build/Include/OpenHome/Av
     cp -p OpenHome/Av/*.h build/Include/OpenHome/Av/
-
-    cd ..
 }
 
 build_ohSongcast()
 {
-    cd $topdir
     dir=ohSongcast
-    echo building $dir
-    cd  $dir
-
-    # Aug 19 2015
-    git checkout fe9b8a80080118f3bff9b44328975d10bc2c230b || exit 1
+    echo;echo building $dir
+    cd  $topdir/$dir || exit 1
 
     make release=1 Receiver WavSender
 }
@@ -205,10 +293,31 @@ official_way()
     make release=1
 }
 
-clone_oh
+buildall()
+{
+    echo "Building all in $topdir"
+    build_ohNet
+    build_ohNetGenerated
+    build_ohdevtools
+    build_ohTopology
+    build_ohSongcast
+}
 
-build_ohNet
-build_ohNetGenerated
-build_ohdevtools
-build_ohTopology
-build_ohSongcast
+if test $opt_c -ne 0; then
+    test -d $topdir/ohNet && fatal target dir should be initially empty \
+                                   for producing a tar distribution
+    clone_oh || fatal clone failed
+    make_tarfile || fatal make_tarfile failed
+    exit 0
+fi
+
+# Extract tar, or clone git repos
+if test $opt_t -eq 1; then
+    echo "Extracting tarfile in $topdir"
+    cd $topdir || exit 1
+    tar xf $tarfile
+elif test $opt_b -eq 1; then
+    clone_oh
+fi
+
+buildall

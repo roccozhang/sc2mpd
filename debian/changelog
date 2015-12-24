@@ -1,4 +1,4 @@
-sc2mpd (1.0.0-1) unstable; urgency=low
+sc2mpd (0.13.0-1) unstable; urgency=low
 
   * Add the mpd2sc Songcast Sender tool
   * New package build with integrated openhome libs build
