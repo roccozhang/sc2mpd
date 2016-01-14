@@ -117,13 +117,23 @@ clone_oh()
     # consequences, and the errors are suppressed by defining t4 as 'echo'
     patch -p1 <<EOF
 diff --git a/Makefile b/Makefile
-index 7c0dae8..ddc4477 100644
+index 7c0dae8..6f51a86 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -412,6 +412,7 @@ ifeq (\$(uset4), yes)
- build_targets = \$(build_targets_base) tt
+@@ -88,6 +88,9 @@ else
+     ifeq ($(gcc_machine),arm-linux-gnueabihf)
+       detected_openhome_architecture = armhf
+     endif
++    ifeq ($(gcc_machine),armv6l-unknown-linux-gnueabihf)
++      detected_openhome_architecture = armhf
++    endif
+     ifneq (,$(findstring i686,$(gcc_machine)))
+       detected_openhome_architecture = x86
+     endif
+@@ -412,6 +415,7 @@ ifeq ($(uset4), yes)
+ build_targets = $(build_targets_base) tt
  else
- build_targets = \$(build_targets_base)
+ build_targets = $(build_targets_base)
 +t4 = echo
  endif
  default : all
@@ -136,17 +146,27 @@ EOF
     git checkout Makefile
     patch -p1 <<EOF
 diff --git a/Makefile b/Makefile
-index a7b84e3..9c335f8 100644
+index a7b84e3..5175a6f 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -359,6 +359,7 @@ ifeq (\$(uset4), yes)
- build_targets = \$(build_targets_base) tt
+@@ -79,6 +79,9 @@ else
+     ifeq ($(gcc_machine),arm-linux-gnueabihf)
+       detected_openhome_architecture = armhf
+     endif
++    ifeq ($(gcc_machine),armv6l-unknown-linux-gnueabihf)
++      detected_openhome_architecture = armhf
++    endif
+     ifneq (,$(findstring i686,$(gcc_machine)))
+       detected_openhome_architecture = x86
+     endif
+@@ -359,6 +362,7 @@ ifeq ($(uset4), yes)
+ build_targets = $(build_targets_base) tt
  else
- build_targets = \$(build_targets_base)
+ build_targets = $(build_targets_base)
 +t4 = echo
  endif
  default : all
-
+ 
 EOF
 
     cd  $topdir/ohdevtools
