@@ -79,7 +79,7 @@ AudioReader *openAudio(const string& fn, const string& audioparams,
         ext = fn.substr(dot);
     }
     
-    if (!strcasecmp(fn.substr(dot).c_str(), ".wav")) {
+    if (!strcasecmp(ext.c_str(), ".wav")) {
         return new WavReader(fn);
     } else if (ext.empty() || !strcasecmp(ext.c_str(), ".fifo")) {
         AParms parms;
