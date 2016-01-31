@@ -88,18 +88,19 @@ AudioReader *openAudio(const string& fn, const string& audioparams,
         }
         LOGDEB("Audioparams: freq " << parms.freq << " bits " << parms.bits <<
                " chans " << parms.chans << endl);
-        struct stat st;
-        if (stat(fn.c_str(), &st)) {
-            LOGERR(" stat() errno: " << errno << " for " << fn << endl);
-            return 0;
+        if (fn.compare("stdin")) {
+            struct stat st;
+            if (stat(fn.c_str(), &st)) {
+                LOGERR(" stat() errno: " << errno << " for " << fn << endl);
+                return 0;
+            }
+            if ((st.st_mode & S_IFMT) != S_IFIFO) {
+                LOGERR("Not a fifo: " << fn << endl);
+                return 0;
+            }
         }
-        if ((st.st_mode & S_IFMT) == S_IFIFO) {
-            return new FifoReader(fn, parms.freq, parms.bits, parms.chans,
-                                  parms.needswap, srcblock);
-        } else {
-            LOGERR("Not a fifo: " << fn << endl);
-            return 0;
-        }
+        return new FifoReader(fn, parms.freq, parms.bits, parms.chans,
+                              parms.needswap, srcblock);
     } else {
         LOGERR("Unprocessed file extension: " << fn.substr(dot) << endl);
         return 0;

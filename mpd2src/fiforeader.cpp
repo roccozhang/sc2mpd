@@ -41,7 +41,7 @@ FifoReader::FifoReader(const string& fn, int sampleRate, int bitsPerSample,
 
 FifoReader::~FifoReader()
 {
-    if (m_fd >= 0)
+    if (m_fn.compare("stdin") && m_fd >= 0)
         ::close(m_fd);
     
     if (m_tmpbuf)
@@ -51,11 +51,17 @@ FifoReader::~FifoReader()
 bool FifoReader::open()
 {
     LOGDEB("FifoReader::open: blocking: " << m_blocking << endl);
-    
-    int flags = m_blocking ? O_RDONLY : O_RDONLY|O_NONBLOCK;
-    if ((m_fd = ::open(m_fn.c_str(), flags)) < 0) {
-        LOGERR("open() errno " << errno << " on " << m_fn << endl);
-        return false;
+    if (m_fn.compare("stdin")) {
+        int flags = m_blocking ? O_RDONLY : O_RDONLY|O_NONBLOCK;
+        if ((m_fd = ::open(m_fn.c_str(), flags)) < 0) {
+            LOGERR("open() errno " << errno << " on " << m_fn << endl);
+            return false;
+        }
+    } else {
+        m_fd = 0;
+        if (!m_blocking) {
+            fcntl(m_fd, F_SETFL, O_NONBLOCK);
+        }
     }
     return true;
 }

@@ -301,7 +301,9 @@ int main(int aArgc, char* aArgv[])
     OptionBool optionDisabled("-d", "--disabled", "[disabled] start up disabled");
     parser.AddOption(&optionDisabled);
 
-    OptionString optionFile("-f", "--file", Brn(""), "[file] wav file to send");
+    OptionString optionFile("-f", "--file", Brn(""), "[file] file name to read and send. "
+                            "Use xx.wav for an actual wav,\n"
+                            "      xx or xx.fifo for a fifo, stdin for stdin");
     parser.AddOption(&optionFile);
     
     OptionUint optionLatency("-l", "--latency", 100, "[latency] latency in ms");

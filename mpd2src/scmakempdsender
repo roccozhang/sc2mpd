@@ -40,7 +40,8 @@ import socket
 
 uxsender = "mpd2sc"
 def usage(f):
-    print("Usage: scmakempdsender.py [-u] [-p mpdport] [", file=f)
+    print("Usage: scmakempdsender [-h] [-f friendlyname] [-p mpdport] [-u]",
+          file=f)
     sys.exit(1)
     
 upmpdclitoo = False
