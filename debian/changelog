@@ -1,3 +1,9 @@
+sc2mpd (0.14.0-1) unstable; urgency=low
+
+  * Add stdin read capability to mpd2sc for integrating with ext sources
+  
+ -- Jean-Francois Dockes <jf@dockes.org>  Thu, 04 Feb 2016 18:07:00 +0200
+
 sc2mpd (0.13.0-1) unstable; urgency=low
 
   * Add the mpd2sc Songcast Sender tool
